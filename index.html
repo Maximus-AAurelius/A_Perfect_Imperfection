@@ -2785,6 +2785,84 @@ const dataService = {
     const { data, error } = await supabaseClient.rpc('create_match_if_mutual', { target_profile: targetProfileId });
     if (error) throw error;
     return data; // match uuid, or null if not mutual / blocked
+  },
+
+  // ---------- matches / chat ----------
+  async getMyMatches(myProfileId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data: matches, error } = await supabaseClient
+      .from('matches').select('id, profile_a, profile_b, created_at, updated_at')
+      .eq('status', 'matched')
+      .or('profile_a.eq.' + myProfileId + ',profile_b.eq.' + myProfileId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    const list = matches || [];
+    if (!list.length) return [];
+    const otherIds = list.map(m => (m.profile_a === myProfileId ? m.profile_b : m.profile_a));
+    const { data: profs } = await supabaseClient.from('profiles').select('id, full_name').in('id', otherIds);
+    const profById = {}; (profs || []).forEach(p => { profById[p.id] = p; });
+    const { data: photos } = await supabaseClient.from('photos').select('profile_id, storage_path, is_main').in('profile_id', otherIds);
+    const mainByProfile = {};
+    (photos || []).forEach(ph => { if (!mainByProfile[ph.profile_id] || ph.is_main) mainByProfile[ph.profile_id] = ph.storage_path; });
+    const urlByPath = await this.signPaths(Object.values(mainByProfile));
+    const { data: msgs } = await supabaseClient.from('messages')
+      .select('match_id, body, created_at, sender_profile_id').in('match_id', list.map(m => m.id))
+      .order('created_at', { ascending: false });
+    const lastByMatch = {};
+    (msgs || []).forEach(mm => { if (!lastByMatch[mm.match_id]) lastByMatch[mm.match_id] = mm; });
+    return list.map(m => {
+      const otherId = m.profile_a === myProfileId ? m.profile_b : m.profile_a;
+      const prof = profById[otherId] || {};
+      const last = lastByMatch[m.id];
+      const md = new Date(m.created_at);
+      return {
+        id: m.id, profileId: otherId,
+        name: prof.full_name || 'Member',
+        photoUrl: urlByPath[mainByProfile[otherId]] || null,
+        hue: hueFromId(otherId),
+        matchedAt: isNaN(md.getTime()) ? '' : md.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        unread: 0,
+        preview: last ? ((last.sender_profile_id === myProfileId ? 'You: ' : '') + last.body) : 'Say hello 👋',
+      };
+    });
+  },
+
+  async getMessages(matchId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient
+      .from('messages').select('id, sender_profile_id, body, created_at')
+      .eq('match_id', matchId).order('created_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async sendMessageRow(matchId, myProfileId, body) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient
+      .from('messages').insert([{ match_id: matchId, sender_profile_id: myProfileId, body }]).select();
+    if (error) throw error;
+    return data && data[0];
+  },
+
+  async unmatch(matchId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { error } = await supabaseClient.rpc('unmatch', { target_match_id: matchId });
+    if (error) throw error;
+  },
+
+  async blockProfile(myProfileId, targetProfileId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { error } = await supabaseClient.from('blocks')
+      .upsert([{ blocker_profile_id: myProfileId, blocked_profile_id: targetProfileId }],
+        { onConflict: 'blocker_profile_id,blocked_profile_id' });
+    if (error) throw error;
+  },
+
+  async reportProfile(myProfileId, targetProfileId, reason, detail) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { error } = await supabaseClient.from('reports')
+      .insert([{ reporter_profile_id: myProfileId, reported_profile_id: targetProfileId, reason: reason, detail: detail || null, context_type: 'profile' }]);
+    if (error) throw error;
   }
 };
 
@@ -2824,7 +2902,7 @@ const APP_STORAGE_KEY = 'perfect-imperfection-free-tier-v1';
 const TRANSIENT_STATE_KEYS = [
   'authPassword', 'authPasswordConfirm', 'authError', 'obError', 'reportError', 'toast', 'resetSent',
   'discoveryLoading', 'chatLoading', 'uploadingSlots', 'matchModalProfileId',
-  'discoveryProfiles', 'discoveryReady',
+  'discoveryProfiles', 'discoveryReady', 'matches', 'matchesLoading', 'activeMessages', 'activeMatchId',
   'reportModalTargetId', 'reportSelectedReason', 'premiumModalOpen', 'blockTargetId',
   'deleteModalOpen'
 ];
@@ -2892,22 +2970,10 @@ class Component extends DCLogic {
     filtersOpen: false,
     filterAgeMin: 18, filterAgeMax: 45, filterDistance: 25, filterGenders: [],
 
-    matches: [
-      { id: 'match-5', profileId: 5, matchedAt: '2 days ago', unread: 1 },
-      { id: 'match-8', profileId: 8, matchedAt: '4 days ago', unread: 0 },
-    ],
-    messagesByMatch: {
-      'match-5': [
-        { sender: 'them', text: 'Hey! Loved your hiking photos 😄', time: 'Yesterday, 6:12 PM' },
-        { sender: 'me', text: 'Thank you! That trail was brutal but worth it', time: 'Yesterday, 6:20 PM' },
-        { sender: 'them', text: 'Down for a coffee this weekend?', time: '9:03 AM' },
-      ],
-      'match-8': [
-        { sender: 'me', text: 'Marcus! Fellow gym rat, nice', time: 'Mon, 4:45 PM' },
-        { sender: 'them', text: 'Haha always looking for a workout partner', time: 'Mon, 5:02 PM' },
-      ],
-    },
+    matches: [],
+    matchesLoading: false,
     activeMatchId: null,
+    activeMessages: [],
     chatDraft: '',
 
     matchModalProfileId: null,
@@ -3048,7 +3114,7 @@ class Component extends DCLogic {
     });
     return profile;
   }
-  goMatches() { this.goTo('matches'); }
+  goMatches() { this.goTo('matches'); this.loadMatches(); }
   goProfile() { this.goTo('profile'); }
   goSettings() { this.goTo('settings'); }
   goAdmin() { this.goTo('admin'); }
@@ -3252,28 +3318,70 @@ class Component extends DCLogic {
   swipePass() { this.doSwipe('pass'); }
   swipeSuper() { this.doSwipe('superlike'); }
   closeMatchModal() { this.setState({ matchModalProfileId: null }); }
-  goToNewMatchChat() {
-    // Real chat lands in the next update — for now confirm the match and keep going.
+  async goToNewMatchChat() {
+    const otherId = this.state.matchModalProfileId;
     this.setState({ matchModalProfileId: null });
-    this.showToast('You matched! Messaging arrives in the next update.');
+    await this.loadMatches();
+    const match = this.state.matches.find(m => m.profileId === otherId);
+    if (match) this.openMatch(match.id);
+    else this.goMatches();
   }
 
   // ---------- matches / chat ----------
-  openMatch(matchId) {
-    const matches = this.state.matches.map(m => m.id === matchId ? Object.assign({}, m, { unread: 0 }) : m);
-    this.setState({ matches, activeMatchId: matchId, view: 'chat', chatLoading: true });
-    clearTimeout(this._chatTimer);
-    this._chatTimer = setTimeout(() => this.setState({ chatLoading: false }), 600);
+  async loadMatches() {
+    if (!this.state.currentProfileId) { this.setState({ matches: [] }); return; }
+    this.setState({ matchesLoading: true });
+    try {
+      const matches = await dataService.getMyMatches(this.state.currentProfileId);
+      this.setState({ matches, matchesLoading: false });
+    } catch (err) {
+      this.setState({ matchesLoading: false });
+      this.showToast(err.message || 'Could not load matches.');
+    }
   }
-  backToMatches() { this.setState({ view: 'matches', activeMatchId: null }); }
+  async openMatch(matchId) {
+    this.setState({ activeMatchId: matchId, view: 'chat', chatLoading: true, activeMessages: [] });
+    try {
+      const msgs = await dataService.getMessages(matchId);
+      this.setState({ activeMessages: msgs, chatLoading: false });
+      this.subscribeChat(matchId);
+    } catch (err) {
+      this.setState({ chatLoading: false });
+      this.showToast(err.message || 'Could not open this chat.');
+    }
+  }
+  subscribeChat(matchId) {
+    this.unsubscribeChat();
+    if (!supabaseClient) return;
+    this._chatChannel = supabaseClient
+      .channel('messages-' + matchId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'match_id=eq.' + matchId }, (payload) => {
+        const row = payload.new;
+        if (this.state.activeMatchId !== matchId) return;
+        if (this.state.activeMessages.some(m => m.id === row.id)) return;
+        this.setState({ activeMessages: this.state.activeMessages.concat([row]) });
+      })
+      .subscribe();
+  }
+  unsubscribeChat() {
+    if (this._chatChannel) { try { supabaseClient.removeChannel(this._chatChannel); } catch (_) {} this._chatChannel = null; }
+  }
+  backToMatches() { this.unsubscribeChat(); this.setState({ view: 'matches', activeMatchId: null, activeMessages: [] }); this.loadMatches(); }
   setChatDraft(e) { this.setState({ chatDraft: e.target.value }); }
-  sendMessage() {
+  async sendMessage() {
     const text = this.state.chatDraft.trim();
-    if (!text || !this.state.activeMatchId) return;
-    const messagesByMatch = Object.assign({}, this.state.messagesByMatch);
-    const list = (messagesByMatch[this.state.activeMatchId] || []).concat([{ sender: 'me', text: text, time: 'Just now' }]);
-    messagesByMatch[this.state.activeMatchId] = list;
-    this.setState({ messagesByMatch, chatDraft: '' });
+    const matchId = this.state.activeMatchId;
+    if (!text || !matchId) return;
+    this.setState({ chatDraft: '' });
+    try {
+      const row = await dataService.sendMessageRow(matchId, this.state.currentProfileId, text);
+      if (row && !this.state.activeMessages.some(m => m.id === row.id)) {
+        this.setState({ activeMessages: this.state.activeMessages.concat([row]) });
+      }
+    } catch (err) {
+      this.setState({ chatDraft: text });
+      this.showToast(err.message || 'Message failed to send.');
+    }
   }
   openBlockFromChat() {
     const match = this.state.matches.find(m => m.id === this.state.activeMatchId);
@@ -3284,23 +3392,39 @@ class Component extends DCLogic {
     if (match) this.openReportModal(match.profileId, 'chat');
   }
   closeBlockModal() { this.setState({ blockTargetId: null }); }
-  confirmBlock() {
+  async confirmBlock() {
     const id = this.state.blockTargetId;
-    const profile = PROFILES.find(p => p.id === id);
-    if (!profile) return;
-    const blockedIds = Object.assign({}, this.state.blockedIds); blockedIds[id] = true;
-    const matches = this.state.matches.filter(m => m.profileId !== id);
-    const next = { blockedIds, matches, blockTargetId: null };
-    if (this.state.blockFrom === 'chat') { next.view = 'matches'; next.activeMatchId = null; }
-    this.setState(next);
-    this.showToast(profile.name + ' blocked');
+    if (!id) return;
+    const fromChat = this.state.blockFrom === 'chat';
+    try {
+      await dataService.blockProfile(this.state.currentProfileId, id);
+      const match = this.state.matches.find(m => m.profileId === id);
+      if (match) { try { await dataService.unmatch(match.id); } catch (_) {} }
+      const blockedIds = Object.assign({}, this.state.blockedIds); blockedIds[id] = true;
+      const next = {
+        blockedIds, blockTargetId: null,
+        matches: this.state.matches.filter(m => m.profileId !== id),
+        discoveryProfiles: this.state.discoveryProfiles.filter(p => p.id !== id),
+      };
+      if (fromChat) { this.unsubscribeChat(); next.view = 'matches'; next.activeMatchId = null; next.activeMessages = []; }
+      this.setState(next);
+      this.showToast('Blocked');
+    } catch (err) {
+      this.setState({ blockTargetId: null });
+      this.showToast(err.message || 'Could not block this person.');
+    }
   }
-  unmatchFromChat() {
+  async unmatchFromChat() {
     const matchId = this.state.activeMatchId;
     if (!matchId) return;
-    const matches = this.state.matches.filter(m => m.id !== matchId);
-    this.setState({ matches, activeMatchId: null, view: 'matches' });
-    this.showToast('Unmatched');
+    try {
+      await dataService.unmatch(matchId);
+      this.unsubscribeChat();
+      this.setState({ matches: this.state.matches.filter(m => m.id !== matchId), activeMatchId: null, activeMessages: [], view: 'matches' });
+      this.showToast('Unmatched');
+    } catch (err) {
+      this.showToast(err.message || 'Could not unmatch.');
+    }
   }
 
   // ---------- profile edit ----------
@@ -3310,17 +3434,29 @@ class Component extends DCLogic {
   openReportModal(profileId, from) { this.setState({ reportModalTargetId: profileId, reportModalFrom: from || 'discovery', reportSelectedReason: null, reportError: false }); }
   closeReportModal() { this.setState({ reportModalTargetId: null }); }
   selectReportReason(reason) { this.setState({ reportSelectedReason: reason, reportError: false }); }
-  submitReport() {
+  async submitReport() {
     const profileId = this.state.reportModalTargetId;
-    const profile = PROFILES.find(p => p.id === profileId);
-    if (!profile) return;
+    if (!profileId) return;
     if (!this.state.reportSelectedReason) { this.setState({ reportError: true }); return; }
-    const blockedIds = Object.assign({}, this.state.blockedIds); blockedIds[profileId] = true;
-    const adminReports = [{ id: this.state.adminReports.length + 1, reporterName: 'You', reportedName: profile.name, reason: this.state.reportSelectedReason || 'Other', status: 'pending', date: 'Jul 2, 2026' }].concat(this.state.adminReports);
-    const nextState = { blockedIds, adminReports, reportModalTargetId: null, matches: this.state.matches.filter(m => m.profileId !== profileId) };
-    if (this.state.reportModalFrom === 'chat') { nextState.view = 'matches'; nextState.activeMatchId = null; }
-    this.setState(nextState);
-    this.showToast(profile.name + ' reported and blocked');
+    const fromChat = this.state.reportModalFrom === 'chat';
+    try {
+      await dataService.reportProfile(this.state.currentProfileId, profileId, this.state.reportSelectedReason, null);
+      // "Submit & block" — reporting also blocks and unmatches the person.
+      try { await dataService.blockProfile(this.state.currentProfileId, profileId); } catch (_) {}
+      const match = this.state.matches.find(m => m.profileId === profileId);
+      if (match) { try { await dataService.unmatch(match.id); } catch (_) {} }
+      const blockedIds = Object.assign({}, this.state.blockedIds); blockedIds[profileId] = true;
+      const next = {
+        blockedIds, reportModalTargetId: null,
+        matches: this.state.matches.filter(m => m.profileId !== profileId),
+        discoveryProfiles: this.state.discoveryProfiles.filter(p => p.id !== profileId),
+      };
+      if (fromChat) { this.unsubscribeChat(); next.view = 'matches'; next.activeMatchId = null; next.activeMessages = []; }
+      this.setState(next);
+      this.showToast('Reported and blocked. Our safety team will review it.');
+    } catch (err) {
+      this.showToast(err.message || 'Could not submit the report.');
+    }
   }
   unblockUser(id) {
     const blockedIds = Object.assign({}, this.state.blockedIds); delete blockedIds[id];
@@ -3463,33 +3599,24 @@ class Component extends DCLogic {
     });
 
     // ----- matches -----
-    const matchRows = s.matches.map(m => {
-      const p = PROFILES.find(pp => pp.id === m.profileId);
-      const msgs = s.messagesByMatch[m.id] || [];
-      const last = msgs.length ? msgs[msgs.length - 1] : null;
-      return {
-        name: p.name, initials: initials(p.name), matchedAt: m.matchedAt, hasUnread: m.unread > 0,
-        preview: last ? (last.sender === 'me' ? 'You: ' : '') + last.text : 'Say hello 👋',
-        onOpen: () => this.openMatch(m.id),
-        avatarStyle: 'width:56px; height:56px; border-radius:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:Poppins,sans-serif; font-weight:700; font-size:15px; color:oklch(0.4 0.08 ' + p.hue + '); background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + p.hue + ') 0 6px, oklch(0.94 0.03 ' + p.hue + ') 6px 12px);',
-      };
-    });
+    const matchAvatar = (m, size, radius, font) => (m.photoUrl
+      ? 'width:' + size + 'px; height:' + size + 'px; border-radius:' + radius + 'px; flex-shrink:0; background:#000 center center / cover no-repeat; background-image:url(\'' + m.photoUrl + '\');'
+      : 'width:' + size + 'px; height:' + size + 'px; border-radius:' + radius + 'px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:Poppins,sans-serif; font-weight:700; font-size:' + font + 'px; color:oklch(0.4 0.08 ' + m.hue + '); background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + m.hue + ') 0 6px, oklch(0.94 0.03 ' + m.hue + ') 6px 12px);');
+    const matchRows = s.matches.map(m => ({
+      name: m.name, initials: m.photoUrl ? '' : initials(m.name), matchedAt: m.matchedAt, hasUnread: m.unread > 0,
+      preview: m.preview,
+      onOpen: () => this.openMatch(m.id),
+      avatarStyle: matchAvatar(m, 56, 28, 15),
+    }));
 
     // ----- chat -----
     const activeMatch = s.matches.find(m => m.id === s.activeMatchId);
-    const activeProfile = activeMatch ? PROFILES.find(p => p.id === activeMatch.profileId) : null;
-    const chatMessages = (activeMatch && !s.chatLoading) ? (s.messagesByMatch[activeMatch.id] || []).map(m => {
-      if (m.sender === 'system') {
-        return {
-          text: m.text, time: '',
-          rowStyle: 'display:flex; justify-content:center;',
-          bubbleStyle: 'max-width:90%; padding:10px 16px; border-radius:12px; font-size:12px; line-height:1.5; text-align:center; background:oklch(0.97 0.03 15); color:oklch(0.4 0.08 15); font-weight:500;',
-          timeStyle: 'display:none;',
-        };
-      }
-      const isMe = m.sender === 'me';
+    const activeProfile = activeMatch ? { name: activeMatch.name, hue: activeMatch.hue, photoUrl: activeMatch.photoUrl } : null;
+    const fmtTime = (iso) => { const d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+    const chatMessages = (activeMatch && !s.chatLoading) ? s.activeMessages.map(m => {
+      const isMe = m.sender_profile_id === s.currentProfileId;
       return {
-        text: m.text, time: m.time,
+        text: m.body, time: fmtTime(m.created_at),
         rowStyle: 'display:flex; flex-direction:column; align-items:' + (isMe ? 'flex-end' : 'flex-start') + ';',
         bubbleStyle: 'max-width:75%; padding:11px 15px; border-radius:16px; font-size:14px; line-height:1.4; ' + (isMe ? 'background:oklch(0.62 0.19 15); color:#fff; border-bottom-right-radius:4px;' : 'background:oklch(0.95 0.008 50); color:oklch(0.25 0.02 50); border-bottom-left-radius:4px;'),
         timeStyle: 'font-size:11px; color:oklch(0.62 0.01 50); margin-top:4px; padding:0 4px;',
@@ -3537,7 +3664,7 @@ class Component extends DCLogic {
     const findAnyProfile = (id) => s.discoveryProfiles.find(p => p.id === id) || PROFILES.find(p => p.id === id) || null;
     const reportTarget = s.reportModalTargetId ? findAnyProfile(s.reportModalTargetId) : null;
     const blockTarget = s.blockTargetId ? findAnyProfile(s.blockTargetId) : null;
-    const chatEmptyHint = !s.chatLoading && !!activeMatch && (s.messagesByMatch[activeMatch.id] || []).filter(m => m.sender !== 'system').length === 0;
+    const chatEmptyHint = !s.chatLoading && !!activeMatch && s.activeMessages.length === 0;
     const reportReasons = REPORT_REASONS.map(r => ({ label: r, onClick: () => this.selectReportReason(r), style: chipStyle(s.reportSelectedReason === r) + ' display:block; margin-bottom:8px;' }));
 
     // ----- match modal -----
@@ -3631,9 +3758,11 @@ class Component extends DCLogic {
       openPremium: () => this.openPremium(),
 
       isChat: s.view === 'chat',
-      chatName: activeProfile ? activeProfile.name : '', chatInitials: activeProfile ? initials(activeProfile.name) : '',
+      chatName: activeProfile ? activeProfile.name : '', chatInitials: (activeProfile && !activeProfile.photoUrl) ? initials(activeProfile.name) : '',
       chatMatchedAt: activeMatch ? activeMatch.matchedAt : '',
-      chatAvatarStyle: activeProfile ? 'width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-family:Poppins,sans-serif; font-weight:700; font-size:13px; color:oklch(0.4 0.08 ' + activeProfile.hue + '); background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + activeProfile.hue + ') 0 6px, oklch(0.94 0.03 ' + activeProfile.hue + ') 6px 12px);' : '',
+      chatAvatarStyle: activeProfile ? (activeProfile.photoUrl
+        ? "width:40px; height:40px; border-radius:20px; background:#000 center center / cover no-repeat; background-image:url('" + activeProfile.photoUrl + "');"
+        : 'width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-family:Poppins,sans-serif; font-weight:700; font-size:13px; color:oklch(0.4 0.08 ' + activeProfile.hue + '); background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + activeProfile.hue + ') 0 6px, oklch(0.94 0.03 ' + activeProfile.hue + ') 6px 12px);') : '',
       chatMessages, chatDraft: s.chatDraft, setChatDraft: (e) => this.setChatDraft(e), sendMessage: () => this.sendMessage(),
       chatLoading: s.chatLoading, chatEmptyHint,
       backToMatches: () => this.backToMatches(), openBlockFromChat: () => this.openBlockFromChat(), unmatchFromChat: () => this.unmatchFromChat(),

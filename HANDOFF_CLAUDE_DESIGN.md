@@ -129,12 +129,19 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
 - **Requires running `supabase/discovery.sql` once** (adds a SELECT policy so members can read other discoverable profiles' photo rows).
 - **To see it work you need ≥2 accounts** with photos (discovery excludes yourself).
 
+### ✅ Also done 2026-07-06 — real Matches, Chat, Report/Block
+- **Matches tab loads real matches** from Supabase (other person's name + photo + last-message preview).
+- **Chat is real**: opens a match → loads `messages` → send inserts a row → **Supabase Realtime** streams the other person's messages live.
+- **"Send a message"** on the match modal now opens the real chat.
+- **Report / Block / Unmatch are persisted**: block inserts a `blocks` row (and unmatches via the `unmatch` RPC); report inserts a `reports` row (+ blocks); unmatch calls the RPC. Blocking removes the person from discovery and matches, and messaging is blocked server-side by RLS.
+- **Requires running `supabase/chat.sql` once** (enables Realtime on `messages` + adds the participant `unmatch()` RPC).
+
 ### ⚠️ Still mocked / follow-ups (next up)
-1. **Matches list + chat** are still mock. A real match is created in the DB and the modal fires, but the Matches tab/chat still read the hardcoded `PROFILES` array. "Send a message" currently just confirms the match. **This is the next build:** load real matches, real messages, sending + realtime.
-2. **Report / block** are still local-only (not written to Supabase). Names now resolve for real profiles, but nothing persists.
-3. **Superlike** is recorded as a normal `like` (the RPC hardcodes 'like').
-4. **Admin dashboard** still mock.
-5. **Cross-user photo viewing** works via signed URLs readable by any signed-in member (private to non-members). Future hardening: sign URLs server-side via an Edge Function scoped to approved photos of active, non-blocked profiles.
+1. **Admin dashboard** is still mock (reads `PROFILES` + fake reports). The admin nav link is still visible to everyone — **hide it / gate it to real admins** (flagged for the security pass).
+2. **Superlike** is recorded as a normal `like` (the RPC hardcodes 'like').
+3. **Settings → Blocked users** list shows "Unknown" for real blocks (no names stored locally).
+4. **Cross-user photo viewing** works via signed URLs readable by any signed-in member (private to non-members). Future hardening: sign URLs server-side via an Edge Function scoped to approved photos of active, non-blocked profiles.
+5. **Pending: full security review** (RLS coverage, admin gating, input validation, secret exposure) — planned next.
 
 ### 🧹 Housekeeping
 - Stray **`supabas/`** folder (typo of `supabase/`) contains an old duplicate `index.html` + `.dc.html` + assets. It's gitignored but still clutters the working tree — safe to delete.
@@ -143,9 +150,9 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
 
 ## Next Steps (in order)
 
-0. **RUN THIS FIRST (once each):** in the Supabase SQL editor run `supabase/storage_photos.sql` (done) **and now `supabase/discovery.sql`** (adds the photo read policy for discovery). Discovery photos won't load until `discovery.sql` is run.
-1. **Matches + chat on real data** — load the current user's `matches` (join the other participant's profile + photo), load/send `messages` (RLS restricts to match participants; blocked users can't message), and wire the "Send a message" button + the match modal into real chat. Add Supabase Realtime for live messages.
-2. **Report / block persistence** — write `reports` and `blocks` rows; blocking should immediately drop the person from discovery and any match.
+0. **RUN THESE SQL FILES ONCE (in order):** `storage_photos.sql` (done), `discovery.sql`, **and now `chat.sql`** (Realtime on messages + the `unmatch()` RPC). Chat/unmatch won't work until `chat.sql` is run.
+1. **Full security review** (next, per request) — RLS coverage on every table, gate the admin dashboard to real `admin_users`, hide the admin nav link, validate inputs, confirm no secret/service-role exposure, check the anon key is the only key in the client.
+2. **Admin dashboard on real data** — real reports queue, suspend/ban actions via admin-only RLS.
 3. **Account-screen photo editing** — persist add/remove/set-main against the `photos` table for an existing profile (onboarding already persists).
 4. **Design polish alongside the above** — loading/empty/error states for auth, onboarding, discovery, and chat in the warm brand voice.
 
