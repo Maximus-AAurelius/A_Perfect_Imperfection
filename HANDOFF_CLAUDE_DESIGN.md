@@ -114,13 +114,18 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
 - **Database schema** — `supabase/schema.sql` is comprehensive: `profiles, photos, swipes, matches, messages, blocks, reports, admin_users, moderation_actions`, all with RLS enabled and per-user policies. This is solid.
 - **Landing page + hero** — done and looks good.
 
-### ⚠️ Broken / mocked (this is the next work)
-1. **Photo upload is 100% fake.** `togglePhotoSlot()` just flips a boolean after a fake 900ms timer and *deliberately fails every 3rd try* to look realistic. There is **no file picker, no image, no `storage.upload`**. The `photos` table + `storage_path` exist in the schema, but **no Supabase Storage bucket is created and nothing is ever uploaded.** → _"cannot add photos."_
-2. **"Create" at the end silently fails to persist.** The final step calls `dataService.saveProfile()` (a real `profiles` upsert), but:
-   - If **email confirmation is ON** in Supabase, `signUp` returns a user with **no active session (no JWT)**. The upsert then runs as the `anon` role, and RLS policy `profiles_insert_own` (`auth.uid() = user_id`) **rejects it**. The error is caught and shown as a small inline message, so it looks like *"nothing happened."*
-   - The upsert also **drops `interests` and all photos** (they're never written), even on success.
-   - → _"hit Create and nothing."_ **Root cause is the email-confirm / no-session gap + RLS, not the button.**
-3. **Discovery, matches, chat, reports, admin** are all driven by a hardcoded `PROFILES` mock array — **not** reading from Supabase.
+### ✅ Fixed on 2026-07-05 (was broken)
+1. **Email-confirm/session gap → profile now saves.** Email confirmation was turned OFF in Supabase, so signup returns a live session and the `profiles` upsert succeeds under RLS. Verified end-to-end (profile creates all the way through). The upsert now also writes `interests`.
+2. **Confirm-password field added** to the signup form (signup mode only). Blocks submit if the two passwords don't match or the password is under 6 chars.
+3. **Real photo upload built** (replaces the old fake toggle):
+   - Onboarding photo step now has a **real file picker** (JPG/PNG/WebP, max 5 MB), uploads to a **private** Supabase Storage bucket `profile-photos/<uid>/…`, shows the image via a **short-lived signed URL**, and enforces **max 3** photos (frontend + DB trigger).
+   - On "Create," photos are written to the `photos` table linked to the new profile row.
+   - **Requires running `supabase/storage_photos.sql` once** in the Supabase SQL editor (creates the bucket, storage RLS, and the 3-photo limit trigger).
+
+### ⚠️ Still mocked / follow-ups
+1. **Account-screen photo editing isn't persisted yet.** The Settings → photos grid uses the same real uploader, but it does **not** yet load existing photos on login or write/delete `photos` rows for an already-created profile. Onboarding is the persisted path today.
+2. **Discovery, matches, chat, reports, admin** are still driven by a hardcoded `PROFILES` mock array — **not** reading from Supabase.
+3. **Cross-user photo viewing** works via signed URLs readable by any signed-in member (private to non-members). Future hardening: sign URLs server-side via an Edge Function scoped to approved photos of active, non-blocked profiles.
 
 ### 🧹 Housekeeping
 - Stray **`supabas/`** folder (typo of `supabase/`) contains an old duplicate `index.html` + `.dc.html` + assets. It's gitignored but still clutters the working tree — safe to delete.
@@ -129,13 +134,14 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
 
 ## Next Steps (in order)
 
-1. **Decide the email-confirmation strategy** (this unblocks profile creation):
-   - Easiest for testing: **turn OFF email confirmation** in Supabase Auth settings so signup returns a live session and the profile upsert succeeds under RLS. _(We may need to re-test the email/logging flow — that was verified at an earlier testing stage.)_
-   - Or keep confirmation ON and save the profile **after** the user confirms + logs in (deferred profile write).
-2. **Make the profile "Create" actually persist everything** — include `interests`, and confirm the row lands in `profiles` (check the Supabase table, not just the toast).
-3. **Build real photo upload** — add a file input, upload to a Supabase **Storage bucket** (e.g. `profile-photos`), insert rows into the `photos` table with `storage_path`, and enforce owner-only RLS on the bucket.
-4. **Wire Discovery to real data** — replace the `PROFILES` mock with `dataService.getProfiles()` reads, honoring block/exclusion rules.
-5. **Design polish alongside the above** — loading/empty/error states for auth, onboarding, and discovery in the warm brand voice; mobile rhythm on the onboarding steps.
+0. **RUN THIS FIRST:** in the Supabase SQL editor, run `supabase/storage_photos.sql` (creates the private `profile-photos` bucket, storage RLS, and the 3-photo limit trigger). Photo upload will error until this is run.
+1. **Persist account-screen photo edits** — on login, load the profile's existing `photos` and sign their URLs; on the Settings grid, write/delete `photos` rows (not just storage) so edits survive reload.
+2. **Wire Discovery to real data** — replace the `PROFILES` mock with `dataService.getProfiles()` reads, honoring block/exclusion rules, and show each profile's photos via signed URLs.
+3. **Design polish alongside the above** — loading/empty/error states for auth, onboarding, and discovery in the warm brand voice; mobile rhythm on the onboarding steps.
+
+## Design tasks you may want in Claude Design
+- Onboarding photo step: the slots now show real uploaded images. Consider a nicer empty-slot affordance, an upload progress treatment, and a clear "main photo" indicator.
+- Signup form now has a **Confirm password** field (signup only) — style it consistently with the other inputs.
 
 ## Risks / gotchas
 
