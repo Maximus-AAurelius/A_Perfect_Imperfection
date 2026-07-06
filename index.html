@@ -2111,8 +2111,9 @@
             <sc-for list="{{ cardStack }}" as="card" hint-placeholder-count="1">
               <div style="{{ card.style }}">
                 <div style="{{ card.photoStyle }}">
-                  <div style="font-family:'Poppins',sans-serif; font-weight:800; font-size:60px; color:{{ card.photoTextColor }};">{{ card.initials }}</div>
-                  <div style="font-family:monospace; font-size:11px; color:{{ card.photoTextColor }}; margin-top:6px;">profile photo placeholder</div>
+                  <sc-if value="{{ card.noPhoto }}" hint-placeholder-val="{{ true }}">
+                    <div style="font-family:'Poppins',sans-serif; font-weight:800; font-size:60px; color:{{ card.photoTextColor }};">{{ card.initials }}</div>
+                  </sc-if>
                   <sc-if value="{{ card.verified }}" hint-placeholder-val="{{ false }}">
                     <div style="position:absolute; top:14px; right:14px; background:oklch(0.62 0.16 160); color:#fff; font-size:11px; font-weight:700; padding:5px 10px; border-radius:12px;">Verified</div>
                   </sc-if>
@@ -2123,7 +2124,7 @@
                     <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:22px;">{{ card.name }}</div>
                     <div style="font-size:18px; color:oklch(0.5 0.02 50);">{{ card.age }}</div>
                   </div>
-                  <div style="font-size:13px; color:oklch(0.5 0.02 50); margin-top:2px;">{{ card.distance }} mi · {{ card.city }}</div>
+                  <div style="font-size:13px; color:oklch(0.5 0.02 50); margin-top:2px;">{{ card.location }}</div>
                   <div style="font-size:14px; margin-top:10px; line-height:1.5; color:oklch(0.35 0.02 50);">{{ card.bio }}</div>
                   <div style="display:flex; gap:6px; margin-top:12px; flex-wrap:wrap;">
                     <sc-for list="{{ card.interestTags }}" as="tag" hint-placeholder-count="3">
@@ -2708,6 +2709,82 @@ const dataService = {
     const { data, error } = await supabaseClient.from('photos').insert(rows).select();
     if (error) throw error;
     return data;
+  },
+
+  // ---------- discovery / swipes / matches ----------
+  async getMyProfile(authUid) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient
+      .from('profiles').select('*').eq('user_id', authUid).maybeSingle();
+    if (error) throw error;
+    return data; // profile row or null
+  },
+
+  async getPhotosForProfile(profileId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient
+      .from('photos').select('storage_path, is_main').eq('profile_id', profileId)
+      .order('is_main', { ascending: false });
+    if (error) throw error;
+    const rows = data || [];
+    if (!rows.length) return [];
+    const paths = rows.map(r => r.storage_path);
+    const urlByPath = await this.signPaths(paths);
+    return rows.map(r => ({ path: r.storage_path, url: urlByPath[r.storage_path] || null }));
+  },
+
+  async signPaths(paths) {
+    const out = {};
+    if (!paths || !paths.length) return out;
+    const { data } = await supabaseClient.storage.from('profile-photos').createSignedUrls(paths, 3600);
+    (data || []).forEach(s => { if (s && s.signedUrl && !s.error) out[s.path] = s.signedUrl; });
+    return out;
+  },
+
+  async getSwipedTargetIds(myProfileId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient
+      .from('swipes').select('target_profile_id').eq('swiper_profile_id', myProfileId);
+    if (error) throw error;
+    return (data || []).map(r => r.target_profile_id);
+  },
+
+  async getDiscoveryProfiles(authUid) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    // RLS (profiles_select_safe) already hides inactive + blocked profiles.
+    const { data: profs, error } = await supabaseClient
+      .from('profiles')
+      .select('id, user_id, full_name, date_of_birth, city, bio, gender, interests')
+      .neq('user_id', authUid)
+      .eq('moderation_status', 'active')
+      .limit(100);
+    if (error) throw error;
+    const list = profs || [];
+    if (!list.length) return [];
+    const ids = list.map(p => p.id);
+    const { data: photos } = await supabaseClient
+      .from('photos').select('profile_id, storage_path, is_main').in('profile_id', ids);
+    const mainByProfile = {};
+    (photos || []).forEach(ph => {
+      if (!mainByProfile[ph.profile_id] || ph.is_main) mainByProfile[ph.profile_id] = ph.storage_path;
+    });
+    const urlByPath = await this.signPaths(Object.values(mainByProfile));
+    return list.map(p => ({ profile: p, photoUrl: urlByPath[mainByProfile[p.id]] || null }));
+  },
+
+  async recordSwipe(myProfileId, targetProfileId, direction) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { error } = await supabaseClient.from('swipes')
+      .upsert([{ swiper_profile_id: myProfileId, target_profile_id: targetProfileId, direction }],
+        { onConflict: 'swiper_profile_id,target_profile_id' });
+    if (error) throw error;
+  },
+
+  async likeAndMaybeMatch(targetProfileId) {
+    if (!supabaseClient) throw new Error('Supabase not initialized');
+    const { data, error } = await supabaseClient.rpc('create_match_if_mutual', { target_profile: targetProfileId });
+    if (error) throw error;
+    return data; // match uuid, or null if not mutual / blocked
   }
 };
 
@@ -2725,13 +2802,29 @@ const ZERO_TOLERANCE_ITEMS = [
 ];
 
 function initials(name) {
-  return name.split(' ').map(function (p) { return p[0]; }).join('').toUpperCase();
+  return (name || '?').split(' ').filter(Boolean).map(function (p) { return p[0]; }).join('').toUpperCase() || '?';
+}
+function ageFromDob(dob) {
+  if (!dob) return '';
+  const b = new Date(dob);
+  if (isNaN(b.getTime())) return '';
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+function hueFromId(id) {
+  let h = 0; const str = String(id || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+  return h;
 }
 
 const APP_STORAGE_KEY = 'perfect-imperfection-free-tier-v1';
 const TRANSIENT_STATE_KEYS = [
-  'authPassword', 'authError', 'obError', 'reportError', 'toast', 'resetSent',
+  'authPassword', 'authPasswordConfirm', 'authError', 'obError', 'reportError', 'toast', 'resetSent',
   'discoveryLoading', 'chatLoading', 'uploadingSlots', 'matchModalProfileId',
+  'discoveryProfiles', 'discoveryReady',
   'reportModalTargetId', 'reportSelectedReason', 'premiumModalOpen', 'blockTargetId',
   'deleteModalOpen'
 ];
@@ -2784,7 +2877,7 @@ class Component extends DCLogic {
     authMode: 'signup',
     authName: '', authDob: '1998-04-12', authEmail: '', authPassword: '', authPasswordConfirm: '',
     resetSent: false,
-    currentUserId: null, currentUserEmail: null,
+    currentUserId: null, currentUserEmail: null, currentProfileId: null,
 
     onboardingStep: 0,
     obName: '', obAge: '26', obCity: 'Austin, TX', obGender: 'female',
@@ -2828,6 +2921,7 @@ class Component extends DCLogic {
     deleteModalOpen: false,
     authError: null, obError: null, reportError: false,
     discoveryLoading: false, chatLoading: false,
+    discoveryProfiles: [], discoveryReady: false,
     uploadingSlots: {},
     settingsSection: 'account',
     notifSettings: { match: true, message: true, like: false },
@@ -2906,9 +3000,53 @@ class Component extends DCLogic {
   goGuidelines() { this.goTo('guidelines'); }
   goDiscovery() {
     this.goTo('discovery');
+    this.loadDiscovery();
+  }
+  async loadDiscovery() {
     this.setState({ discoveryLoading: true });
-    clearTimeout(this._discTimer);
-    this._discTimer = setTimeout(() => this.setState({ discoveryLoading: false }), 800);
+    try {
+      const raw = await dataService.getDiscoveryProfiles(this.state.currentUserId);
+      const swiped = await dataService.getSwipedTargetIds(this.state.currentProfileId);
+      const swipedSet = {}; swiped.forEach(id => { swipedSet[id] = true; });
+      const profiles = raw
+        .filter(r => !swipedSet[r.profile.id])
+        .map(r => {
+          const p = r.profile;
+          return {
+            id: p.id, name: p.full_name || 'Member', age: ageFromDob(p.date_of_birth),
+            gender: p.gender || '', city: p.city || '', bio: p.bio || '',
+            interests: Array.isArray(p.interests) ? p.interests : [],
+            verified: false, hue: hueFromId(p.id), photoUrl: r.photoUrl,
+          };
+        });
+      this.setState({ discoveryProfiles: profiles, discoveryReady: true, discoveryLoading: false });
+    } catch (err) {
+      this.setState({ discoveryLoading: false, discoveryReady: true, discoveryProfiles: [] });
+      this.showToast(err.message || 'Could not load people right now.');
+    }
+  }
+  // Load the signed-in user's real profile + photos into state. Returns the
+  // profile row, or null if they haven't created one yet.
+  async loadMyProfileIntoState(authUid) {
+    const profile = await dataService.getMyProfile(authUid);
+    if (!profile) return null;
+    let obPhotos = [null, null, null];
+    try {
+      const photos = await dataService.getPhotosForProfile(profile.id);
+      photos.slice(0, 3).forEach((ph, i) => { obPhotos[i] = ph; });
+    } catch (_) { /* non-fatal — show profile without photos */ }
+    this.setState({
+      currentProfileId: profile.id,
+      obName: profile.full_name || '',
+      obCity: profile.city || '',
+      obGender: profile.gender || 'female',
+      obBio: profile.bio || '',
+      obInterests: Array.isArray(profile.interests) ? profile.interests : [],
+      obAgeMin: profile.age_min || 24, obAgeMax: profile.age_max || 35, obDistance: profile.distance_max || 15,
+      authDob: profile.date_of_birth || this.state.authDob,
+      obPhotos,
+    });
+    return profile;
   }
   goMatches() { this.goTo('matches'); }
   goProfile() { this.goTo('profile'); }
@@ -2957,8 +3095,15 @@ class Component extends DCLogic {
         const result = await dataService.login(s.authEmail, s.authPassword);
         if (result && result.user) {
           this.setState({ authError: null, currentUserId: result.user.id, currentUserEmail: result.user.email });
-          this.goDiscovery();
-          this.showToast('Welcome back!');
+          const profile = await this.loadMyProfileIntoState(result.user.id);
+          if (!profile) {
+            // Signed up before but never finished onboarding — send them there.
+            this.setState({ view: 'onboarding', onboardingStep: 0, obName: (result.user.user_metadata && result.user.user_metadata.full_name) || '' });
+            this.showToast('Welcome back! Finish setting up your profile.');
+          } else {
+            this.goDiscovery();
+            this.showToast('Welcome back!');
+          }
         }
       } catch (err) {
         this.setState({ authError: err.message || "That email and password don't match our records. Try again, or reset your password." });
@@ -3046,6 +3191,7 @@ class Component extends DCLogic {
           if (profile && profile.id && paths.length) {
             await dataService.insertPhotos(profile.id, paths);
           }
+          if (profile && profile.id) this.setState({ currentProfileId: profile.id });
           this.showToast('Profile created! Start discovering.');
         } catch (err) {
           this.setState({ obError: err.message || 'Failed to save profile. Try again.' });
@@ -3069,29 +3215,37 @@ class Component extends DCLogic {
   }
   getFilteredProfiles() {
     const s = this.state;
-    return PROFILES.filter(p => {
+    return s.discoveryProfiles.filter(p => {
       if (s.swipedIds[p.id]) return false;
       if (s.blockedIds[p.id]) return false;
-      if (p.age < s.filterAgeMin || p.age > s.filterAgeMax) return false;
-      if (p.distance > s.filterDistance) return false;
+      if (typeof p.age === 'number' && (p.age < s.filterAgeMin || p.age > s.filterAgeMax)) return false;
       if (s.filterGenders.length && !s.filterGenders.includes(p.gender)) return false;
       return true;
     });
   }
-  resetDiscovery() { this.setState({ swipedIds: {} }); this.showToast('Discovery reset'); }
-  doSwipe(direction) {
+  resetDiscovery() { this.loadDiscovery(); }
+  async doSwipe(direction) {
+    if (!this.state.currentProfileId) { this.showToast('Finish your profile first.'); return; }
     const list = this.getFilteredProfiles();
     if (!list.length) return;
     const profile = list[0];
+    // optimistic: remove the card immediately
     const swiped = Object.assign({}, this.state.swipedIds);
     swiped[profile.id] = direction;
     this.setState({ swipedIds: swiped });
-    if (direction !== 'pass' && profile.willMatch) {
-      const matchId = 'match-' + profile.id;
-      const matches = this.state.matches.concat([{ id: matchId, profileId: profile.id, matchedAt: 'Just now', unread: 0 }]);
-      const messagesByMatch = Object.assign({}, this.state.messagesByMatch);
-      messagesByMatch[matchId] = [{ sender: 'system', text: "You just matched — remember, never send money or personal info to someone you haven't met in person.", time: '' }];
-      this.setState({ matches, messagesByMatch, matchModalProfileId: profile.id });
+    try {
+      if (direction === 'pass') {
+        await dataService.recordSwipe(this.state.currentProfileId, profile.id, 'pass');
+      } else {
+        // like + superlike both record a like and check for a mutual match
+        const matchId = await dataService.likeAndMaybeMatch(profile.id);
+        if (matchId) this.setState({ matchModalProfileId: profile.id });
+      }
+    } catch (err) {
+      // roll the card back so they can try again
+      const back = Object.assign({}, this.state.swipedIds); delete back[profile.id];
+      this.setState({ swipedIds: back });
+      this.showToast(err.message || 'Something went wrong — try again.');
     }
   }
   swipeLike() { this.doSwipe('like'); }
@@ -3099,10 +3253,9 @@ class Component extends DCLogic {
   swipeSuper() { this.doSwipe('superlike'); }
   closeMatchModal() { this.setState({ matchModalProfileId: null }); }
   goToNewMatchChat() {
-    const matchId = 'match-' + this.state.matchModalProfileId;
-    this.setState({ matchModalProfileId: null, activeMatchId: matchId, view: 'chat', chatLoading: true });
-    clearTimeout(this._chatTimer);
-    this._chatTimer = setTimeout(() => this.setState({ chatLoading: false }), 600);
+    // Real chat lands in the next update — for now confirm the match and keep going.
+    this.setState({ matchModalProfileId: null });
+    this.showToast('You matched! Messaging arrives in the next update.');
   }
 
   // ---------- matches / chat ----------
@@ -3295,13 +3448,17 @@ class Component extends DCLogic {
     const filterGenderChips = ['female', 'male', 'nonbinary'].map(g => ({ label: g === 'female' ? 'Women' : g === 'male' ? 'Men' : 'Nonbinary', onClick: () => this.toggleFilterGender(g), style: chipStyle(s.filterGenders.includes(g)) }));
     const cardStack = filtered.slice(0, 2).map((p, idx) => {
       const isTop = idx === 0;
+      const hasPhoto = !!p.photoUrl;
+      const photoBg = hasPhoto
+        ? "background:#000 center center / cover no-repeat; background-image:url('" + p.photoUrl + "');"
+        : 'background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + p.hue + ') 0 16px, oklch(0.94 0.03 ' + p.hue + ') 16px 32px);';
       return {
-        name: p.name, age: p.age, city: p.city, distance: p.distance, bio: p.bio, verified: p.verified,
+        name: p.name, age: p.age, location: p.city || 'Nearby', bio: p.bio, verified: p.verified, noPhoto: !hasPhoto,
         initials: initials(p.name), photoTextColor: 'oklch(0.38 0.08 ' + p.hue + ')',
         interestTags: p.interests,
         onReport: (e) => { e.stopPropagation(); this.openReportModal(p.id, 'discovery'); },
         style: 'position:absolute; inset:0; background:#fff; border-radius:22px; box-shadow:0 20px 45px -18px oklch(0.3 0.03 50 / 0.35); overflow:hidden; display:flex; flex-direction:column; transform:' + (isTop ? 'none' : 'scale(0.95) translateY(14px)') + '; z-index:' + (isTop ? 2 : 1) + ';',
-        photoStyle: 'position:relative; height:60%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + p.hue + ') 0 16px, oklch(0.94 0.03 ' + p.hue + ') 16px 32px);',
+        photoStyle: 'position:relative; height:60%; display:flex; flex-direction:column; align-items:center; justify-content:center; ' + photoBg,
       };
     });
 
@@ -3377,13 +3534,14 @@ class Component extends DCLogic {
     });
 
     // ----- report modal -----
-    const reportTarget = s.reportModalTargetId ? PROFILES.find(p => p.id === s.reportModalTargetId) : null;
-    const blockTarget = s.blockTargetId ? PROFILES.find(p => p.id === s.blockTargetId) : null;
+    const findAnyProfile = (id) => s.discoveryProfiles.find(p => p.id === id) || PROFILES.find(p => p.id === id) || null;
+    const reportTarget = s.reportModalTargetId ? findAnyProfile(s.reportModalTargetId) : null;
+    const blockTarget = s.blockTargetId ? findAnyProfile(s.blockTargetId) : null;
     const chatEmptyHint = !s.chatLoading && !!activeMatch && (s.messagesByMatch[activeMatch.id] || []).filter(m => m.sender !== 'system').length === 0;
     const reportReasons = REPORT_REASONS.map(r => ({ label: r, onClick: () => this.selectReportReason(r), style: chipStyle(s.reportSelectedReason === r) + ' display:block; margin-bottom:8px;' }));
 
     // ----- match modal -----
-    const matchModalProfile = s.matchModalProfileId ? PROFILES.find(p => p.id === s.matchModalProfileId) : null;
+    const matchModalProfile = s.matchModalProfileId ? (s.discoveryProfiles.find(p => p.id === s.matchModalProfileId) || PROFILES.find(p => p.id === s.matchModalProfileId)) : null;
     const circleAvatar = (hue, offset) => 'width:84px; height:84px; border-radius:42px; display:flex; align-items:center; justify-content:center; font-family:Poppins,sans-serif; font-weight:700; font-size:16px; color:oklch(0.4 0.08 ' + hue + '); background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + hue + ') 0 6px, oklch(0.94 0.03 ' + hue + ') 6px 12px); border:4px solid #fff; margin-' + offset + ':-16px;';
 
     // ----- admin -----

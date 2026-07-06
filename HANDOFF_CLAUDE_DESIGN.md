@@ -122,10 +122,19 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
    - On "Create," photos are written to the `photos` table linked to the new profile row.
    - **Requires running `supabase/storage_photos.sql` once** in the Supabase SQL editor (creates the bucket, storage RLS, and the 3-photo limit trigger).
 
-### ⚠️ Still mocked / follow-ups
-1. **Account-screen photo editing isn't persisted yet.** The Settings → photos grid uses the same real uploader, but it does **not** yet load existing photos on login or write/delete `photos` rows for an already-created profile. Onboarding is the persisted path today.
-2. **Discovery, matches, chat, reports, admin** are still driven by a hardcoded `PROFILES` mock array — **not** reading from Supabase.
-3. **Cross-user photo viewing** works via signed URLs readable by any signed-in member (private to non-members). Future hardening: sign URLs server-side via an Edge Function scoped to approved photos of active, non-blocked profiles.
+### ✅ Also done 2026-07-06 — real Discovery + swipe loop
+- **Login now loads your real profile + photos** from Supabase (account screen shows real data; if a signed-in user has no profile yet they're routed to onboarding).
+- **Discovery reads real profiles** from Supabase (active, not-blocked, not-yet-swiped, excludes self), showing each person's real main photo via a signed URL, with age computed from date of birth.
+- **Pass** writes a `swipes` row; **Like/Superlike** call the `create_match_if_mutual` RPC — a mutual like creates a `matches` row and pops the "It's a Match!" modal.
+- **Requires running `supabase/discovery.sql` once** (adds a SELECT policy so members can read other discoverable profiles' photo rows).
+- **To see it work you need ≥2 accounts** with photos (discovery excludes yourself).
+
+### ⚠️ Still mocked / follow-ups (next up)
+1. **Matches list + chat** are still mock. A real match is created in the DB and the modal fires, but the Matches tab/chat still read the hardcoded `PROFILES` array. "Send a message" currently just confirms the match. **This is the next build:** load real matches, real messages, sending + realtime.
+2. **Report / block** are still local-only (not written to Supabase). Names now resolve for real profiles, but nothing persists.
+3. **Superlike** is recorded as a normal `like` (the RPC hardcodes 'like').
+4. **Admin dashboard** still mock.
+5. **Cross-user photo viewing** works via signed URLs readable by any signed-in member (private to non-members). Future hardening: sign URLs server-side via an Edge Function scoped to approved photos of active, non-blocked profiles.
 
 ### 🧹 Housekeeping
 - Stray **`supabas/`** folder (typo of `supabase/`) contains an old duplicate `index.html` + `.dc.html` + assets. It's gitignored but still clutters the working tree — safe to delete.
@@ -134,10 +143,11 @@ The landing hero photo was missing (an earlier cleanup replaced it with an SVG p
 
 ## Next Steps (in order)
 
-0. **RUN THIS FIRST:** in the Supabase SQL editor, run `supabase/storage_photos.sql` (creates the private `profile-photos` bucket, storage RLS, and the 3-photo limit trigger). Photo upload will error until this is run.
-1. **Persist account-screen photo edits** — on login, load the profile's existing `photos` and sign their URLs; on the Settings grid, write/delete `photos` rows (not just storage) so edits survive reload.
-2. **Wire Discovery to real data** — replace the `PROFILES` mock with `dataService.getProfiles()` reads, honoring block/exclusion rules, and show each profile's photos via signed URLs.
-3. **Design polish alongside the above** — loading/empty/error states for auth, onboarding, and discovery in the warm brand voice; mobile rhythm on the onboarding steps.
+0. **RUN THIS FIRST (once each):** in the Supabase SQL editor run `supabase/storage_photos.sql` (done) **and now `supabase/discovery.sql`** (adds the photo read policy for discovery). Discovery photos won't load until `discovery.sql` is run.
+1. **Matches + chat on real data** — load the current user's `matches` (join the other participant's profile + photo), load/send `messages` (RLS restricts to match participants; blocked users can't message), and wire the "Send a message" button + the match modal into real chat. Add Supabase Realtime for live messages.
+2. **Report / block persistence** — write `reports` and `blocks` rows; blocking should immediately drop the person from discovery and any match.
+3. **Account-screen photo editing** — persist add/remove/set-main against the `photos` table for an existing profile (onboarding already persists).
+4. **Design polish alongside the above** — loading/empty/error states for auth, onboarding, discovery, and chat in the warm brand voice.
 
 ## Design tasks you may want in Claude Design
 - Onboarding photo step: the slots now show real uploaded images. Consider a nicer empty-slot affordance, an upload progress treatment, and a clear "main photo" indicator.
