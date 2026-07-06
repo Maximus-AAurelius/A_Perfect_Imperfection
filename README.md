@@ -6,9 +6,10 @@ Authenticity-first dating and community platform.
 
 ## Canonical App Target
 
-The current canonical web app is the self-contained root static deploy file:
+The current canonical Netlify drag-and-drop deploy is the `deploy/` folder:
 
-- `index.html` - main app shell deployed as the landing/MVP experience
+- `deploy/index.html` - main app shell deployed as the landing/MVP experience
+- `deploy/assets/hero-model-v2.webp` - hero image used by the app
 - `supabase/schema.sql` - database, RLS, matching, messaging, reports, blocks, and moderation schema
 
 The site is intended to deploy as a static app on Netlify. The public domain is:
@@ -28,7 +29,7 @@ The old duplicated `app/` copy has been removed so the root files are the source
 
 ## Run Locally
 
-Open `index.html` in a browser, or serve the folder with any static server.
+Open `deploy/index.html` in a browser, or serve the `deploy/` folder with any static server.
 
 Example:
 
@@ -40,9 +41,9 @@ The app needs internet access for Supabase and CDN-hosted client libraries.
 
 ## Deploy
 
-For the current Netlify deploy, upload only `index.html`.
+For the current Netlify deploy, drag and drop the whole `deploy/` folder.
 
-Do not upload `support.js`, old `.dc.html` files, `assets/`, or the `supabas/` folder unless the app is rebuilt and the deployment approach changes.
+Do not upload `support.js`, old `.dc.html` files, root `assets/`, or the `supabas/` folder unless the app is rebuilt and the deployment approach changes.
 
 DNS is connected through GoDaddy for `aperfectimperfection.org`.
 

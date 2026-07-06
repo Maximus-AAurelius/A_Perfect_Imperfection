@@ -1,14 +1,14 @@
 # A Perfect Imperfection - Static Netlify + Supabase MVP Handoff
 
 **Updated:** 2026-07-05
-**Canonical target:** root static app (`index.html`) deployed on Netlify
+**Canonical target:** `deploy/` folder deployed on Netlify
 **Domain:** `https://aperfectimperfection.org`
 
 ## What Changed This Pass
 
-- Chose the root `index.html` app as the canonical short-term target.
+- Chose the `deploy/` folder as the canonical Netlify drag-and-drop target.
 - Removed the duplicated tracked `app/` copy so the repo has one app source of truth.
-- Bundled the current deploy into a self-contained `index.html`.
+- Bundled the current deploy into `deploy/index.html` plus `deploy/assets/hero-model-v2.webp`.
 - Removed the Design Component runtime self-fetch from `index.html` to prevent runtime source text from appearing on the live page.
 - Replaced the starter Supabase schema with an MVP schema that includes:
   - RLS on all app tables
@@ -77,6 +77,6 @@ on conflict (user_id) do update set role = 'owner';
 
 ## Deployment Notes
 
-- For the current deploy, upload only `index.html` to Netlify.
+- For the current deploy, drag and drop the whole `deploy/` folder to Netlify.
 - Keep GoDaddy DNS pointed at the Netlify site for `aperfectimperfection.org`.
-- Do not deploy `support.js`, old `.dc.html` files, `assets/`, or the `supabas/` folder unless the app is rebuilt and the deployment approach changes.
+- Do not deploy `support.js`, old `.dc.html` files, root `assets/`, or the `supabas/` folder unless the app is rebuilt and the deployment approach changes.

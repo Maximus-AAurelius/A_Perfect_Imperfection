@@ -48,14 +48,36 @@ using (
   and (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Read: any authenticated member may read objects in this bucket, so the app
--- can mint signed URLs to show photos in discovery. Non-authenticated users
--- get nothing. (Future hardening: restrict to approved photos of active,
--- non-blocked profiles via an Edge Function that signs URLs server-side.)
+-- Read: users can read their own folder, and can read objects that belong to
+-- profiles visible under the app's block/moderation rules. This lets discovery
+-- mint signed URLs without making every bucket object readable to every member.
 drop policy if exists "profile_photos_select_authenticated" on storage.objects;
 create policy "profile_photos_select_authenticated"
 on storage.objects for select to authenticated
-using (bucket_id = 'profile-photos');
+using (
+  bucket_id = 'profile-photos'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or exists (
+      select 1
+      from public.photos ph
+      join public.profiles p on p.id = ph.profile_id
+      where ph.storage_path = storage.objects.name
+        and (
+          public.is_admin()
+          or p.user_id = auth.uid()
+          or (
+            p.moderation_status = 'active'
+            and not exists (
+              select 1 from public.blocks b
+              where (b.blocker_profile_id = public.my_profile_id() and b.blocked_profile_id = p.id)
+                 or (b.blocker_profile_id = p.id and b.blocked_profile_id = public.my_profile_id())
+            )
+          )
+        )
+    )
+  )
+);
 
 -- 3) Enforce the free-tier 3-photo limit on the photos table ------------------
 create or replace function public.enforce_photo_limit()

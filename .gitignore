@@ -76,6 +76,3 @@ archives/
 .obsidian/community-plugins.json
 .obsidian/cache/
 .obsidian/sync.json
-
-# Local Netlify drag-drop build artifact (regenerated from root index.html + assets)
-deploy/

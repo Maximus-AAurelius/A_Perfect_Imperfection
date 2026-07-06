@@ -204,6 +204,27 @@ as $$
   );
 $$;
 
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  delete from auth.users
+  where id = me;
+end;
+$$;
+
+revoke all on function public.delete_my_account() from public;
+grant execute on function public.delete_my_account() to authenticated;
+
 create or replace function public.create_match_if_mutual(target_profile uuid)
 returns uuid
 language plpgsql
@@ -283,6 +304,31 @@ alter table public.blocks enable row level security;
 alter table public.reports enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.moderation_actions enable row level security;
+
+-- Do not expose profile emails through the public client API. RLS controls rows,
+-- not columns, so grant SELECT only on discovery-safe profile fields.
+revoke select on public.profiles from anon, authenticated;
+grant select (
+  id,
+  user_id,
+  full_name,
+  date_of_birth,
+  city,
+  bio,
+  gender,
+  looking_for,
+  interests,
+  age_min,
+  age_max,
+  distance_max,
+  hide_location,
+  moderation_status,
+  photo_verified,
+  email_verified,
+  phone_verified,
+  created_at,
+  updated_at
+) on public.profiles to authenticated;
 
 drop policy if exists profiles_select_safe on public.profiles;
 create policy profiles_select_safe on public.profiles
