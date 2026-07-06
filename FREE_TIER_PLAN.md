@@ -1,24 +1,40 @@
-# Free-tier rollout plan
+# Free-Tier Rollout Plan
 
-## What is live now
-- The prototype now saves profile, match, chat, and settings state locally in the browser.
-- There is a visible banner explaining that this is a free-tier starter and that Supabase can be added later.
-- Data can be exported to JSON and imported back later.
+## Canonical Deployment
 
-## Next free-tier steps
-1. Create a Supabase project.
-2. Run the schema in [supabase/schema.sql](supabase/schema.sql).
-3. Enable Supabase Auth and storage.
-4. Replace the in-memory mock state with Supabase queries and mutations.
-5. Keep moderation manual in the first version and use the reports table as the queue.
+The short-term MVP target is the static root app deployed to Netlify:
 
-## Suggested first launch scope
-- Sign up / login with Supabase Auth
-- Profiles and photos stored in Supabase storage
-- Matches and messages in Postgres with Realtime
-- Reports and blocks persisted in Postgres
-- Admin queue backed by the reports table
+- App file: `Perfect Imperfection.dc.html`
+- Runtime: `support.js`
+- Domain: `https://aperfectimperfection.org`
+- DNS: GoDaddy -> Netlify
+
+## What Is Live Now
+
+- Static landing/prototype experience
+- Supabase Auth for signup/login
+- Supabase profile saving during onboarding
+- Supabase password reset email request
+- Admin link gated by `admin_users`
+- Local browser fallback/state for unfinished prototype flows
+
+## Before Real-User Testing
+
+1. Run `supabase/schema.sql`.
+2. Create the first owner in `admin_users`.
+3. Verify RLS with a regular test account.
+4. Confirm regular users cannot enter admin or update another user's rows.
+5. Confirm reports, blocks, messages, and swipes are persisted before treating them as real safety controls.
+
+## Next Free-Tier Steps
+
+1. Load discovery profiles from Supabase.
+2. Persist swipes and mutual matches.
+3. Persist messages and add Realtime.
+4. Persist reports and blocks.
+5. Replace mock admin rows with Supabase moderation data.
+6. Add Supabase Storage photo uploads with client-side compression.
 
 ## Cost
-- Supabase free tier is enough for an MVP and private soft launch.
-- Storage and bandwidth should stay low enough for the first release if photos are compressed.
+
+Supabase and Netlify free tiers should be enough for a private MVP and small tester group if photos are compressed and Realtime usage is watched.

@@ -93,20 +93,19 @@ These may be future features, but not MVP priorities.
 
 ## Tech Stack
 
-Expected stack:
+Current canonical stack:
 
-* Next.js
-* React
-* Tailwind CSS
+* Static Design Component HTML at the repo root
+* Netlify hosting
+* GoDaddy DNS for aperfectimperfection.org
 * Supabase
 * PostgreSQL
 * Supabase Auth
 * Supabase Storage
 * Supabase Realtime
-* Vercel
 * Stripe (later)
 
-Claude should follow this stack unless specifically instructed otherwise.
+Next.js, React components, Tailwind CSS, and Vercel are possible future migration choices, but they are not the current app target. Do not assume an `/app/package.json` or Next.js project exists unless a migration has been explicitly started.
 
 ---
 

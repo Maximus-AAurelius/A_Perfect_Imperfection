@@ -20,6 +20,11 @@ node_modules/
 # Build outputs
 /build/
 
+# Generated local/export artifacts
+.thumbnail
+uploads/
+supabas/
+
 # IDE
 .vscode/
 .idea/
