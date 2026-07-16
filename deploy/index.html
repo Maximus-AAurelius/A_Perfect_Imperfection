@@ -1767,40 +1767,98 @@
         </div>
       </div>
 
-      <div style="flex:1; display:flex; align-items:stretch; gap:56px; flex-wrap:wrap-reverse;">
-        <div style="flex:1; min-width:340px; max-width:640px; background-image:url('assets/hero-model-v2.webp'); background-size:cover; background-position:top center; min-height:540px;"></div>
-        <div style="flex:1; min-width:340px; display:flex; flex-direction:column; justify-content:center; padding:20px 40px 40px 0;">
+      <div style="flex:1; display:flex; align-items:center; gap:56px; flex-wrap:wrap-reverse;">
+        <div style="flex:1 1 460px; max-width:560px; min-width:300px; align-self:stretch; display:flex; align-items:center;">
+          <div style="width:100%; aspect-ratio:610/1000; border-radius:28px; overflow:hidden; box-shadow:0 32px 64px -28px oklch(0.3 0.05 15 / 0.4);">
+            <img src="assets/hero-model-v2.webp" alt="Smiling woman with freckles and vitiligo, hair in a soft bun" style="width:100%; height:100%; object-fit:cover; display:block;" />
+          </div>
+        </div>
+        <div style="position:relative; flex:1; min-width:300px; display:flex; align-items:center; justify-content:center; gap:48px; flex-wrap:wrap; padding:20px 24px 40px 24px;">
+          <div style="position:absolute; top:-60px; right:20px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, oklch(0.85 0.08 15 / 0.35), transparent 70%); filter:blur(10px); z-index:0; pointer-events:none;"></div>
+          <div style="position:relative; z-index:1; flex:1 1 340px; min-width:0; max-width:560px;">
           <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; color:oklch(0.62 0.19 15); margin-bottom:14px; letter-spacing:0.02em;">DATING, HONESTLY</div>
-          <h1 style="font-family:'Poppins',sans-serif; font-weight:800; font-size:52px; line-height:1.05; margin:0 0 20px; letter-spacing:-0.02em;">Your imperfections<br>are the point.</h1>
-          <p style="font-size:18px; line-height:1.6; color:oklch(0.5 0.02 50); max-width:460px; margin:0 0 32px;">A dating community for real people. No filters. No pretending. Just real connections.</p>
-          <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:36px;">
-            <div onClick="{{ startSignup }}" style="background:oklch(0.62 0.19 15); color:#fff; font-weight:700; font-size:16px; padding:16px 30px; border-radius:30px; cursor:pointer; font-family:'Poppins',sans-serif;">Join Free</div>
+          <h1 style="font-family:'Poppins',sans-serif; font-weight:800; font-size:clamp(32px, 5.5vw, 52px); line-height:1.05; margin:0 0 20px; letter-spacing:-0.02em;">Your imperfections<br>are the point.</h1>
+          <p style="font-size:18px; line-height:1.6; color:oklch(0.5 0.02 50); max-width:460px; margin:0 0 32px;">No masking. No shrinking. No performing "normal." Just real connection with people who want the real you.</p>
+          <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:32px;">
+            <div onClick="{{ startSignup }}" style="background:oklch(0.62 0.19 15); color:#fff; font-weight:700; font-size:16px; padding:16px 30px; border-radius:30px; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 14px 30px -12px oklch(0.55 0.19 15 / 0.55);">Join Free</div>
             <div onClick="{{ startLogin }}" style="background:transparent; color:oklch(0.22 0.02 50); font-weight:700; font-size:16px; padding:16px 30px; border-radius:30px; cursor:pointer; border:2px solid oklch(0.9 0.012 50); font-family:'Poppins',sans-serif;">I have an account</div>
           </div>
-          <div style="display:flex; gap:32px; flex-wrap:wrap; margin-bottom:18px;">
-            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:8px;">
-              <div style="width:44px; height:44px; border-radius:22px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:18px; color:oklch(0.62 0.19 15);">✓</div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; white-space: nowrap;">Real People</div>
-                <div style="font-size:12px; color:oklch(0.55 0.02 50);">Verified profiles</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; background:#fff; border:1px solid oklch(0.91 0.012 50); border-radius:20px; padding:18px 22px; box-shadow:0 18px 40px -26px oklch(0.3 0.03 50 / 0.5);">
+            <div style="flex:1; min-width:130px; display:flex; align-items:center; gap:10px;">
+              <div style="width:38px; height:38px; flex-shrink:0; border-radius:19px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:16px; color:oklch(0.62 0.19 15);">✓</div>
+              <div style="display:flex; flex-direction:column; gap:1px;">
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:13px; white-space:nowrap;">Real People</div>
+                <div style="font-size:11.5px; color:oklch(0.55 0.02 50);">Verified profiles</div>
               </div>
             </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:8px;">
-              <div style="width:44px; height:44px; border-radius:22px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:18px; color:oklch(0.62 0.19 15);">♥</div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; white-space: nowrap;">Real Connections</div>
-                <div style="font-size:12px; color:oklch(0.55 0.02 50);">Meaningful matches</div>
+            <div style="width:1px; background:oklch(0.92 0.012 50); align-self:stretch;"></div>
+            <div style="flex:1; min-width:150px; display:flex; align-items:center; gap:10px;">
+              <div style="width:38px; height:38px; flex-shrink:0; border-radius:19px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:16px; color:oklch(0.62 0.19 15);">♥</div>
+              <div style="display:flex; flex-direction:column; gap:1px;">
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:13px; white-space:nowrap;">Real Connections</div>
+                <div style="font-size:11.5px; color:oklch(0.55 0.02 50);">Meaningful matches</div>
               </div>
             </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:8px;">
-              <div style="width:44px; height:44px; border-radius:22px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:18px; color:oklch(0.62 0.19 15);">⛨</div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; white-space: nowrap;">Safe Community</div>
-                <div style="font-size:12px; color:oklch(0.55 0.02 50);">You're in good hands</div>
+            <div style="width:1px; background:oklch(0.92 0.012 50); align-self:stretch;"></div>
+            <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:10px;">
+              <div style="width:38px; height:38px; flex-shrink:0; border-radius:19px; background:oklch(0.95 0.03 15); display:flex; align-items:center; justify-content:center; font-size:16px; color:oklch(0.62 0.19 15);">⛨</div>
+              <div style="display:flex; flex-direction:column; gap:1px;">
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:13px; white-space:nowrap;">Safe Community</div>
+                <div style="font-size:11.5px; color:oklch(0.55 0.02 50);">You're in good hands</div>
               </div>
             </div>
           </div>
           <div style="font-size:13px; color:oklch(0.6 0.01 50);">Must be 18+ to join. Review our <a href="/terms.html" target="_blank" rel="noopener noreferrer" style="color:oklch(0.5 0.02 50);">User Agreement and Privacy Notice</a> before creating an account.</div>
+          </div>
+          <div style="position:relative; z-index:1; flex:1 1 250px; min-width:240px; max-width:320px; display:flex; flex-direction:column; gap:14px;">
+            <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:13px; color:oklch(0.62 0.19 15); letter-spacing:0.06em;">HOW IT WORKS</div>
+            <div style="background:#fff; border:1px solid oklch(0.91 0.012 50); border-radius:18px; padding:16px 18px; box-shadow:0 16px 36px -24px oklch(0.3 0.03 50 / 0.5); display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:30px; height:30px; flex-shrink:0; border-radius:15px; background:linear-gradient(135deg, oklch(0.62 0.19 15), oklch(0.72 0.15 30)); color:#fff; font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center;">1</div>
+              <div>
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px;">Create your honest profile</div>
+                <div style="font-size:12.5px; color:oklch(0.5 0.02 50); line-height:1.5; margin-top:3px;">Share your story at your own pace — no pressure to be perfect.</div>
+              </div>
+            </div>
+            <div style="margin-left:22px; background:#fff; border:1px solid oklch(0.91 0.012 50); border-radius:18px; padding:16px 18px; box-shadow:0 16px 36px -24px oklch(0.3 0.03 50 / 0.5); display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:30px; height:30px; flex-shrink:0; border-radius:15px; background:linear-gradient(135deg, oklch(0.62 0.19 15), oklch(0.72 0.15 30)); color:#fff; font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center;">2</div>
+              <div>
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px;">Discover real people</div>
+                <div style="font-size:12.5px; color:oklch(0.5 0.02 50); line-height:1.5; margin-top:3px;">Real photos and honest bios — not highlight reels.</div>
+              </div>
+            </div>
+            <div style="margin-left:44px; background:#fff; border:1px solid oklch(0.91 0.012 50); border-radius:18px; padding:16px 18px; box-shadow:0 16px 36px -24px oklch(0.3 0.03 50 / 0.5); display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:30px; height:30px; flex-shrink:0; border-radius:15px; background:linear-gradient(135deg, oklch(0.62 0.19 15), oklch(0.72 0.15 30)); color:#fff; font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center;">3</div>
+              <div>
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px;">Match &amp; chat safely</div>
+                <div style="font-size:12.5px; color:oklch(0.5 0.02 50); line-height:1.5; margin-top:3px;">Chat opens only when you both say yes. Report or block anytime.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:28px 40px 72px;">
+        <div style="max-width:1180px; margin:0 auto; background:linear-gradient(135deg, oklch(0.985 0.01 60), oklch(0.96 0.03 20)); border:1px solid oklch(0.9 0.012 50); border-radius:28px; padding:32px; display:flex; flex-wrap:wrap; gap:28px; align-items:stretch;">
+          <div style="flex:1.2 1 320px; min-width:0;">
+            <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; color:oklch(0.62 0.19 15); letter-spacing:0.02em; margin-bottom:10px;">A PLACE TO EXHALE</div>
+            <h2 style="font-family:'Poppins',sans-serif; font-weight:800; font-size:34px; line-height:1.12; margin:0 0 16px; letter-spacing:-0.02em;">For anyone who has ever felt "too different" to belong anywhere.</h2>
+            <p style="font-size:17px; line-height:1.75; color:oklch(0.38 0.02 50); margin:0 0 16px; max-width:690px;">Some people come here carrying visible disabilities. Some carry hidden ones. Some have histories, identities, bodies, diagnoses, scars, or experiences that other spaces treat like too much. This space is built to feel different.</p>
+            <p style="font-size:17px; line-height:1.75; color:oklch(0.38 0.02 50); margin:0; max-width:690px;">We are not here to make anyone a spectacle. We are here to make room for honesty, softness, attraction, boundaries, and real connection without shame.</p>
+          </div>
+          <div style="flex:0.9; min-width:280px; display:flex; flex-direction:column; gap:14px;">
+            <div style="background:#fff; border:1px solid oklch(0.9 0.012 50); border-radius:18px; padding:18px 20px;">
+              <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; margin-bottom:6px;">We lead with dignity</div>
+              <div style="font-size:14px; line-height:1.65; color:oklch(0.5 0.02 50);">People are more than a diagnosis, a label, or the thing they were judged for somewhere else.</div>
+            </div>
+            <div style="background:#fff; border:1px solid oklch(0.9 0.012 50); border-radius:18px; padding:18px 20px;">
+              <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; margin-bottom:6px;">We welcome honesty</div>
+              <div style="font-size:14px; line-height:1.65; color:oklch(0.5 0.02 50);">Share what matters in your own words, on your own timeline, without pressure to perform normal.</div>
+            </div>
+            <div style="background:#fff; border:1px solid oklch(0.9 0.012 50); border-radius:18px; padding:18px 20px;">
+              <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; margin-bottom:6px;">We protect the tone</div>
+              <div style="font-size:14px; line-height:1.65; color:oklch(0.5 0.02 50);">Cruelty, fetishizing, mocking, or treating someone like a curiosity is not what this community is for.</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1868,6 +1926,11 @@
       <div style="max-width:760px; margin:0 auto; width:100%; padding:20px 28px 80px;">
         <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; color:oklch(0.62 0.19 15); letter-spacing:0.02em; margin-bottom:10px;">COMMUNITY GUIDELINES</div>
         <h1 style="font-family:'Poppins',sans-serif; font-weight:800; font-size:38px; margin:0 0 20px; letter-spacing:-0.01em;">The rules that keep this community real.</h1>
+
+        <div style="background:linear-gradient(135deg, oklch(0.985 0.01 60), oklch(0.96 0.03 20)); border:1px solid oklch(0.9 0.012 50); border-radius:16px; padding:22px 24px; margin-bottom:32px;">
+          <h2 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:18px; margin:0 0 8px;">Who this space is for</h2>
+          <p style="font-size:14.5px; line-height:1.7; color:oklch(0.38 0.02 50); margin:0;">People who've felt out of place elsewhere — living with visible or invisible disabilities, neurodivergence, chronic illness, scars, body differences, stigma, or a complicated history. You belong here as you are. In return, we expect kindness, consent, and honesty from everyone — no one here is a curiosity to be studied or a story to be gawked at.</p>
+        </div>
 
         <h2 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:18px; margin:0 0 10px;">Who can join</h2>
         <p style="font-size:15px; line-height:1.7; color:oklch(0.4 0.02 50); margin:0 0 28px;">You must be 18 or older. One authentic profile per person — no duplicate, fake, or impersonation accounts.</p>
@@ -1978,7 +2041,7 @@
     <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;">
       <div style="width:100%; max-width:560px; background:#fff; border-radius:22px; border:1px solid oklch(0.9 0.012 50); padding:36px; animation:pi-pop 0.2s ease;">
         <div style="display:flex; gap:6px; margin-bottom:26px;">
-          <sc-for list="{{ onboardingDots }}" as="dot" hint-placeholder-count="4">
+          <sc-for list="{{ onboardingDots }}" as="dot" hint-placeholder-count="5">
             <div style="{{ dot.style }}"></div>
           </sc-for>
         </div>
@@ -2057,6 +2120,22 @@
           <input type="range" min="1" max="50" value="{{ obDistance }}" onChange="{{ setObDistance }}" style="width:100%; margin-top:8px;" />
         </sc-if>
 
+        <sc-if value="{{ onStep4 }}" hint-placeholder-val="{{ false }}">
+          <h2 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:22px; margin:0 0 4px;">In your own words</h2>
+          <div style="font-size:14px; color:oklch(0.5 0.02 50); margin-bottom:20px;">Totally optional — share only what you want, whenever you're ready.</div>
+          <label style="font-size:13px; font-weight:600;">How you like to communicate</label>
+          <textarea value="{{ obCommNotes }}" onChange="{{ setObCommNotes }}" placeholder="Pace, style, what helps you feel at ease — whatever's useful for someone to know." style="width:100%; min-height:70px; padding:14px; border-radius:12px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif; resize:vertical; margin:8px 0 16px;"></textarea>
+          <label style="font-size:13px; font-weight:600;">Anything you'd like someone to know</label>
+          <textarea value="{{ obCareNotes }}" onChange="{{ setObCareNotes }}" placeholder="Access needs, comfort preferences, or parts of your story you'd like met with care — in your own time." style="width:100%; min-height:70px; padding:14px; border-radius:12px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif; resize:vertical; margin-top:8px;"></textarea>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:18px; background:oklch(0.97 0.01 50); border:1px solid oklch(0.92 0.012 50); border-radius:12px; padding:14px 16px;">
+            <div>
+              <div style="font-size:13px; font-weight:600;">Show these on my profile</div>
+              <div style="font-size:12px; color:oklch(0.5 0.02 50); margin-top:2px;">On: people you discover can see them. Off: they stay just for you — you can change this anytime.</div>
+            </div>
+            <div onClick="{{ toggleNotesPublic }}" style="{{ notesPublicTrackStyle }}"><div style="{{ notesPublicKnobStyle }}"></div></div>
+          </div>
+        </sc-if>
+
         <sc-if value="{{ obError }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:18px; background:oklch(0.97 0.03 25); border:1px solid oklch(0.9 0.06 25); border-radius:10px; padding:11px 14px; font-size:13px; color:oklch(0.45 0.14 25); line-height:1.5;">{{ obError }}</div>
         </sc-if>
@@ -2130,6 +2209,18 @@
                   </div>
                   <div style="font-size:13px; color:oklch(0.5 0.02 50); margin-top:2px;">{{ card.location }}</div>
                   <div style="font-size:14px; margin-top:10px; line-height:1.5; color:oklch(0.35 0.02 50);">{{ card.bio }}</div>
+                  <sc-if value="{{ card.commNotes }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px; background:oklch(0.97 0.01 50); border-radius:10px; padding:10px 12px;">
+                      <div style="font-size:11px; font-weight:700; color:oklch(0.55 0.02 50); letter-spacing:0.02em; margin-bottom:3px;">HOW I COMMUNICATE</div>
+                      <div style="font-size:13px; line-height:1.5; color:oklch(0.35 0.02 50);">{{ card.commNotes }}</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ card.careNotes }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px; background:oklch(0.97 0.01 50); border-radius:10px; padding:10px 12px;">
+                      <div style="font-size:11px; font-weight:700; color:oklch(0.55 0.02 50); letter-spacing:0.02em; margin-bottom:3px;">GOOD TO KNOW</div>
+                      <div style="font-size:13px; line-height:1.5; color:oklch(0.35 0.02 50);">{{ card.careNotes }}</div>
+                    </div>
+                  </sc-if>
                   <div style="display:flex; gap:6px; margin-top:12px; flex-wrap:wrap;">
                     <sc-for list="{{ card.interestTags }}" as="tag" hint-placeholder-count="3">
                       <div style="background:oklch(0.95 0.02 15); color:oklch(0.5 0.1 15); font-size:12px; font-weight:600; padding:5px 10px; border-radius:10px;">{{ tag }}</div>
@@ -2282,6 +2373,15 @@
           </div>
           <div style="display:flex; flex-direction:column; gap:6px;"><label style="font-size:12px; font-weight:600;">City</label><input value="{{ obCity }}" onChange="{{ setObCity }}" style="padding:11px 13px; border-radius:10px; border:1px solid oklch(0.88 0.012 50); font-size:14px;" /></div>
           <div style="display:flex; flex-direction:column; gap:6px;"><label style="font-size:12px; font-weight:600;">Bio</label><textarea value="{{ obBio }}" onChange="{{ setObBio }}" style="min-height:80px; padding:12px; border-radius:10px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif; resize:vertical;"></textarea></div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><label style="font-size:12px; font-weight:600;">How you like to communicate <span style="font-weight:400; color:oklch(0.55 0.02 50);">(optional)</span></label><textarea value="{{ obCommNotes }}" onChange="{{ setObCommNotes }}" placeholder="Pace, style, what helps you feel at ease..." style="min-height:60px; padding:12px; border-radius:10px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif; resize:vertical;"></textarea></div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><label style="font-size:12px; font-weight:600;">Anything you'd like someone to know <span style="font-weight:400; color:oklch(0.55 0.02 50);">(optional)</span></label><textarea value="{{ obCareNotes }}" onChange="{{ setObCareNotes }}" placeholder="Access needs, comfort preferences, or parts of your story you'd like met with care — in your own time." style="min-height:60px; padding:12px; border-radius:10px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif; resize:vertical;"></textarea></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; background:oklch(0.97 0.01 50); border:1px solid oklch(0.92 0.012 50); border-radius:12px; padding:12px 14px;">
+            <div>
+              <div style="font-size:13px; font-weight:600;">Show these on my profile</div>
+              <div style="font-size:12px; color:oklch(0.5 0.02 50); margin-top:2px;">On: people you discover can see them. Off: they stay just for you.</div>
+            </div>
+            <div onClick="{{ toggleNotesPublic }}" style="{{ notesPublicTrackStyle }}"><div style="{{ notesPublicKnobStyle }}"></div></div>
+          </div>
           <div>
             <label style="font-size:12px; font-weight:600;">Interests</label>
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
@@ -2697,7 +2797,7 @@ const dataService = {
     return data || [];
   },
 
-  async saveProfile(userId, email, fullName, dateOfBirth, city, gender, bio, interests, ageMin, ageMax, distanceMax) {
+  async saveProfile(userId, email, fullName, dateOfBirth, city, gender, bio, interests, ageMin, ageMax, distanceMax, commNotes, careNotes, notesPublic) {
     if (!supabaseClient) throw new Error('Supabase not initialized');
     const { data, error } = await supabaseClient.rpc('save_my_profile', {
       p_email: email,
@@ -2709,7 +2809,10 @@ const dataService = {
       p_interests: interests || [],
       p_age_min: ageMin,
       p_age_max: ageMax,
-      p_distance_max: distanceMax
+      p_distance_max: distanceMax,
+      p_communication_notes: commNotes || null,
+      p_care_notes: careNotes || null,
+      p_notes_public: !!notesPublic
     });
     if (error) throw error;
     return { id: data };
@@ -3004,6 +3107,9 @@ class Component extends DCLogic {
     obName: '', obAge: '26', obCity: 'Austin, TX', obGender: 'female',
     obPhotos: [null, null, null],
     obBio: '',
+    obCommNotes: '',
+    obCareNotes: '',
+    obNotesPublic: false,
     obInterests: ['Hiking', 'Coffee'],
     obLookingFor: ['male'],
     obAgeMin: 24, obAgeMax: 35, obDistance: 15,
@@ -3124,6 +3230,7 @@ class Component extends DCLogic {
           return {
             id: p.id, name: p.full_name || 'Member', age: p.age || 18,
             gender: p.gender || '', city: p.city || '', bio: p.bio || '',
+            commNotes: p.communication_notes || '', careNotes: p.care_notes || '',
             interests: Array.isArray(p.interests) ? p.interests : [],
             verified: false, hue: hueFromId(p.id), photoUrl: r.photoUrl,
           };
@@ -3150,6 +3257,9 @@ class Component extends DCLogic {
       obCity: profile.city || '',
       obGender: profile.gender || 'female',
       obBio: profile.bio || '',
+      obCommNotes: profile.communication_notes || '',
+      obCareNotes: profile.care_notes || '',
+      obNotesPublic: !!profile.notes_public,
       obInterests: Array.isArray(profile.interests) ? profile.interests : [],
       obAgeMin: profile.age_min || 24, obAgeMax: profile.age_max || 35, obDistance: profile.distance_max || 15,
       authDob: profile.date_of_birth || this.state.authDob,
@@ -3245,6 +3355,9 @@ class Component extends DCLogic {
   setObAge(e) { this.setState({ obAge: e.target.value }); }
   setObCity(e) { this.setState({ obCity: e.target.value }); }
   setObBio(e) { this.setState({ obBio: e.target.value }); }
+  setObCommNotes(e) { this.setState({ obCommNotes: e.target.value }); }
+  setObCareNotes(e) { this.setState({ obCareNotes: e.target.value }); }
+  toggleNotesPublic() { this.setState({ obNotesPublic: !this.state.obNotesPublic }); }
   setObAgeMin(e) { this.setState({ obAgeMin: Number(e.target.value) }); }
   setObAgeMax(e) { this.setState({ obAgeMax: Number(e.target.value) }); }
   setObDistance(e) { this.setState({ obDistance: Number(e.target.value) }); }
@@ -3306,10 +3419,10 @@ class Component extends DCLogic {
     const step = s.onboardingStep;
     if (step === 0 && (!s.obName.trim() || !String(s.obAge).trim() || !s.obCity.trim())) { this.setState({ obError: 'Name, age, and city are required.' }); return; }
     if (step === 1 && !s.obPhotos.some(Boolean)) { this.setState({ obError: 'Add at least one photo to continue.' }); return; }
-    if (step >= 3) {
+    if (step >= 4) {
       if (s.currentUserId) {
         try {
-          const profile = await dataService.saveProfile(s.currentUserId, s.currentUserEmail, s.obName, s.authDob, s.obCity, s.obGender, s.obBio, s.obInterests, s.obAgeMin, s.obAgeMax, s.obDistance);
+          const profile = await dataService.saveProfile(s.currentUserId, s.currentUserEmail, s.obName, s.authDob, s.obCity, s.obGender, s.obBio, s.obInterests, s.obAgeMin, s.obAgeMax, s.obDistance, s.obCommNotes, s.obCareNotes, s.obNotesPublic);
           const paths = s.obPhotos.filter(Boolean).map(p => p.path);
           if (profile && profile.id && paths.length) {
             await dataService.insertPhotos(profile.id, paths);
@@ -3492,7 +3605,7 @@ class Component extends DCLogic {
       return;
     }
     try {
-      const profile = await dataService.saveProfile(s.currentUserId, s.currentUserEmail, s.obName, s.authDob, s.obCity, s.obGender, s.obBio, s.obInterests, s.obAgeMin, s.obAgeMax, s.obDistance);
+      const profile = await dataService.saveProfile(s.currentUserId, s.currentUserEmail, s.obName, s.authDob, s.obCity, s.obGender, s.obBio, s.obInterests, s.obAgeMin, s.obAgeMax, s.obDistance, s.obCommNotes, s.obCareNotes, s.obNotesPublic);
       await dataService.insertPhotos(profile.id, s.obPhotos.filter(Boolean).map(p => p.path));
       this.setState({ currentProfileId: profile.id });
       this.showToast('Profile saved');
@@ -3658,7 +3771,7 @@ class Component extends DCLogic {
     const genderChips = ['female', 'male', 'nonbinary'].map(g => ({ label: g === 'female' ? 'Woman' : g === 'male' ? 'Man' : 'Nonbinary', onClick: () => this.setGender(g), style: chipStyle(s.obGender === g) }));
     const lookingForChips = ['female', 'male', 'nonbinary'].map(g => ({ label: g === 'female' ? 'Women' : g === 'male' ? 'Men' : 'Nonbinary', onClick: () => this.toggleLookingFor(g), style: chipStyle(s.obLookingFor.includes(g)) }));
     const interestChips = INTEREST_OPTIONS.map(name => ({ label: name, onClick: () => this.toggleInterest(name), style: chipStyle(s.obInterests.includes(name)) }));
-    const onboardingDots = [0, 1, 2, 3].map(i => ({ style: 'flex:1; height:5px; border-radius:3px; background:' + (i <= s.onboardingStep ? 'oklch(0.62 0.19 15)' : 'oklch(0.92 0.012 50)') + ';' }));
+    const onboardingDots = [0, 1, 2, 3, 4].map(i => ({ style: 'flex:1; height:5px; border-radius:3px; background:' + (i <= s.onboardingStep ? 'oklch(0.62 0.19 15)' : 'oklch(0.92 0.012 50)') + ';' }));
     const obPhotoSlots = s.obPhotos.map((photo, i) => {
       const filled = !!photo;
       return {
@@ -3669,7 +3782,7 @@ class Component extends DCLogic {
     });
 
     const onboardingBackStyle = 'color:oklch(0.5 0.02 50); font-weight:600; padding:13px 10px; cursor:pointer; font-family:Poppins,sans-serif;';
-    const onboardingNextLabel = s.onboardingStep >= 3 ? 'Finish' : 'Continue';
+    const onboardingNextLabel = s.onboardingStep >= 4 ? 'Finish' : 'Continue';
 
     // ----- discovery -----
     const filtered = this.getFilteredProfiles();
@@ -3682,6 +3795,7 @@ class Component extends DCLogic {
         : 'background:repeating-linear-gradient(135deg, oklch(0.9 0.05 ' + p.hue + ') 0 16px, oklch(0.94 0.03 ' + p.hue + ') 16px 32px);';
       return {
         name: p.name, age: p.age, location: p.city || 'Nearby', bio: p.bio, verified: p.verified, noPhoto: !hasPhoto,
+        commNotes: p.commNotes || '', careNotes: p.careNotes || '',
         initials: initials(p.name), photoTextColor: 'oklch(0.38 0.08 ' + p.hue + ')',
         interestTags: p.interests,
         onReport: (e) => { e.stopPropagation(); this.openReportModal(p.id, 'discovery'); },
@@ -3823,12 +3937,17 @@ class Component extends DCLogic {
       goLoginFromForgot: () => this.goLoginFromForgot(), sendReset: () => this.sendReset(),
 
       isOnboarding: s.view === 'onboarding',
-      onStep0: s.onboardingStep === 0, onStep1: s.onboardingStep === 1, onStep2: s.onboardingStep === 2, onStep3: s.onboardingStep === 3,
+      onStep0: s.onboardingStep === 0, onStep1: s.onboardingStep === 1, onStep2: s.onboardingStep === 2, onStep3: s.onboardingStep === 3, onStep4: s.onboardingStep === 4,
       onboardingDots, genderChips, lookingForChips, interestChips, obPhotoSlots,
       obName: s.obName, setObName: (e) => this.setObName(e),
       obAge: s.obAge, setObAge: (e) => this.setObAge(e),
       obCity: s.obCity, setObCity: (e) => this.setObCity(e),
       obBio: s.obBio, setObBio: (e) => this.setObBio(e),
+      obCommNotes: s.obCommNotes, setObCommNotes: (e) => this.setObCommNotes(e),
+      obCareNotes: s.obCareNotes, setObCareNotes: (e) => this.setObCareNotes(e),
+      toggleNotesPublic: () => this.toggleNotesPublic(),
+      notesPublicTrackStyle: 'width:42px; height:24px; border-radius:12px; cursor:pointer; position:relative; flex-shrink:0; background:' + (s.obNotesPublic ? 'oklch(0.62 0.19 15)' : 'oklch(0.88 0.012 50)') + '; transition:background 0.15s;',
+      notesPublicKnobStyle: 'position:absolute; top:3px; left:' + (s.obNotesPublic ? '21px' : '3px') + '; width:18px; height:18px; border-radius:9px; background:#fff; transition:left 0.15s;',
       obAgeMin: s.obAgeMin, setObAgeMin: (e) => this.setObAgeMin(e),
       obAgeMax: s.obAgeMax, setObAgeMax: (e) => this.setObAgeMax(e),
       obDistance: s.obDistance, setObDistance: (e) => this.setObDistance(e),
