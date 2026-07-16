@@ -47,7 +47,20 @@ begin
   if not found then
     raise exception 'Match not found or you are not a participant';
   end if;
+
+  -- Require both people to express fresh interest before another match can
+  -- form; otherwise the old mutual likes would recreate it immediately.
+  delete from public.swipes
+   where (swiper_profile_id = me and target_profile_id in (
+            select case when profile_a = me then profile_b else profile_a end
+            from public.matches where id = target_match_id
+          ))
+      or (target_profile_id = me and swiper_profile_id in (
+            select case when profile_a = me then profile_b else profile_a end
+            from public.matches where id = target_match_id
+          ));
 end;
 $$;
 
+revoke all on function public.unmatch(uuid) from public, anon;
 grant execute on function public.unmatch(uuid) to authenticated;

@@ -1691,13 +1691,13 @@
 })();
 
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.3"></script>
 <!-- Fallback CDN if jsdelivr fails -->
 <script>
   if (typeof window.supabase === 'undefined') {
     console.warn('[Supabase] jsdelivr failed, trying unpkg fallback...');
     const fallbackScript = document.createElement('script');
-    fallbackScript.src = 'https://unpkg.com/@supabase/supabase-js@2';
+    fallbackScript.src = 'https://unpkg.com/@supabase/supabase-js@2.110.3';
     fallbackScript.onload = () => console.log('[Supabase] Fallback CDN loaded successfully');
     fallbackScript.onerror = () => console.error('[Supabase] Both CDNs failed to load');
     document.head.appendChild(fallbackScript);
@@ -1800,7 +1800,7 @@
               </div>
             </div>
           </div>
-          <div style="font-size:13px; color:oklch(0.6 0.01 50);">Must be 18+ to join. By continuing you agree to our <a href="#" style="color:oklch(0.5 0.02 50);">Terms</a> and <a href="#" style="color:oklch(0.5 0.02 50);">Privacy Policy</a> (placeholders).</div>
+          <div style="font-size:13px; color:oklch(0.6 0.01 50);">Must be 18+ to join. Review our <a href="/terms.html" target="_blank" rel="noopener noreferrer" style="color:oklch(0.5 0.02 50);">User Agreement and Privacy Notice</a> before creating an account.</div>
         </div>
       </div>
     </div>
@@ -1914,6 +1914,10 @@
             <input type="date" value="{{ authDob }}" onChange="{{ setAuthDob }}" style="padding:12px 14px; border-radius:10px; border:1px solid oklch(0.88 0.012 50); font-size:14px; font-family:'Inter',sans-serif;" />
             <div style="font-size:12px; color:oklch(0.6 0.01 50);">You must be 18 or older to join.</div>
           </div>
+          <label style="display:flex; gap:9px; align-items:flex-start; margin-top:14px; font-size:12px; line-height:1.5; color:oklch(0.42 0.02 50);">
+            <input type="checkbox" checked="{{ termsAccepted }}" onChange="{{ setTermsAccepted }}" style="margin-top:3px;" />
+            <span>I am at least 18 and agree to the <a href="/terms.html" target="_blank" rel="noopener noreferrer" style="color:oklch(0.62 0.19 15); font-weight:700;">User Agreement and Privacy Notice</a>.</span>
+          </label>
         </sc-if>
 
         <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
@@ -2565,6 +2569,8 @@ const PROFILES = [
 // Supabase initialization
 const SUPABASE_URL = 'https://ouanfrbzlejeiocywony.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_I5Hou3fFKOWCqV4YgxHpsA_VQLY27oA';
+const TERMS_VERSION = '2026-07-14';
+const PRIVACY_VERSION = '2026-07-14';
 let supabaseClient = null;
 
 function initSupabase() {
@@ -2608,7 +2614,7 @@ const dataService = {
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, date_of_birth: dateOfBirth } }
+      options: { data: { full_name: fullName, date_of_birth: dateOfBirth, terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION, accepted_at: new Date().toISOString() } }
     });
     if (error) throw error;
     return data;
@@ -2644,6 +2650,16 @@ const dataService = {
       .limit(1);
     if (error) throw error;
     return !!(data && data.length);
+  },
+
+  async recordLegalAcceptance(user) {
+    if (!supabaseClient || !user || !user.id) return;
+    const metadata = user.user_metadata || {};
+    if (metadata.terms_version !== TERMS_VERSION || metadata.privacy_version !== PRIVACY_VERSION || !metadata.accepted_at) return;
+    const { error } = await supabaseClient.from('legal_acceptances').upsert([{
+      user_id: user.id, terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION
+    }], { onConflict: 'user_id,terms_version,privacy_version', ignoreDuplicates: true });
+    if (error) throw error;
   },
 
   async deleteMyAccount() {
@@ -2683,24 +2699,20 @@ const dataService = {
 
   async saveProfile(userId, email, fullName, dateOfBirth, city, gender, bio, interests, ageMin, ageMax, distanceMax) {
     if (!supabaseClient) throw new Error('Supabase not initialized');
-    const { data, error } = await supabaseClient
-      .from('profiles')
-      .upsert([{
-        user_id: userId,
-        email: email,
-        full_name: fullName,
-        date_of_birth: dateOfBirth,
-        city: city,
-        gender: gender,
-        bio: bio,
-        interests: interests || [],
-        age_min: ageMin,
-        age_max: ageMax,
-        distance_max: distanceMax
-      }], { onConflict: 'user_id' })
-      .select(SAFE_PROFILE_COLUMNS);
+    const { data, error } = await supabaseClient.rpc('save_my_profile', {
+      p_email: email,
+      p_full_name: fullName,
+      p_date_of_birth: dateOfBirth || null,
+      p_city: city || null,
+      p_gender: gender || null,
+      p_bio: bio || null,
+      p_interests: interests || [],
+      p_age_min: ageMin,
+      p_age_max: ageMax,
+      p_distance_max: distanceMax
+    });
     if (error) throw error;
-    return data[0];
+    return { id: data };
   },
 
   // ---------- photos (private bucket + signed URLs) ----------
@@ -2732,19 +2744,20 @@ const dataService = {
   async insertPhotos(profileId, paths) {
     if (!supabaseClient) throw new Error('Supabase not initialized');
     if (!paths || !paths.length) return [];
-    const rows = paths.map((p, idx) => ({ profile_id: profileId, storage_path: p, is_main: idx === 0 }));
-    const { data, error } = await supabaseClient.from('photos').insert(rows).select();
+    const { data, error } = await supabaseClient.rpc('attach_my_profile_photos', {
+      p_profile_id: profileId,
+      p_paths: paths
+    });
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   // ---------- discovery / swipes / matches ----------
   async getMyProfile(authUid) {
     if (!supabaseClient) throw new Error('Supabase not initialized');
-    const { data, error } = await supabaseClient
-      .from('profiles').select(SAFE_PROFILE_COLUMNS).eq('user_id', authUid).maybeSingle();
+    const { data, error } = await supabaseClient.rpc('get_my_profile');
     if (error) throw error;
-    return data; // profile row or null
+    return data && data[0] ? data[0] : null;
   },
 
   async getPhotosForProfile(profileId) {
@@ -2778,13 +2791,7 @@ const dataService = {
 
   async getDiscoveryProfiles(authUid) {
     if (!supabaseClient) throw new Error('Supabase not initialized');
-    // RLS (profiles_select_safe) already hides inactive + blocked profiles.
-    const { data: profs, error } = await supabaseClient
-      .from('profiles')
-      .select('id, user_id, full_name, date_of_birth, city, bio, gender, interests')
-      .neq('user_id', authUid)
-      .eq('moderation_status', 'active')
-      .limit(100);
+    const { data: profs, error } = await supabaseClient.rpc('discover_profiles');
     if (error) throw error;
     const list = profs || [];
     if (!list.length) return [];
@@ -2940,7 +2947,7 @@ const TRANSIENT_STATE_KEYS = [
   'discoveryLoading', 'chatLoading', 'uploadingSlots', 'matchModalProfileId',
   'discoveryProfiles', 'discoveryReady', 'matches', 'matchesLoading', 'activeMessages', 'activeMatchId',
   'reportModalTargetId', 'reportSelectedReason', 'premiumModalOpen', 'blockTargetId',
-  'deleteModalOpen', 'currentUserId', 'currentUserEmail', 'currentProfileId', 'isAdminUser'
+  'deleteModalOpen', 'currentUserId', 'currentUserEmail', 'currentProfileId', 'isAdminUser', 'termsAccepted'
 ];
 
 function sanitizeStoredState(state) {
@@ -2989,7 +2996,7 @@ class Component extends DCLogic {
   state = {
     view: 'landing',
     authMode: 'signup',
-    authName: '', authDob: '1998-04-12', authEmail: '', authPassword: '', authPasswordConfirm: '',
+    authName: '', authDob: '', authEmail: '', authPassword: '', authPasswordConfirm: '', termsAccepted: false,
     resetSent: false,
     currentUserId: null, currentUserEmail: null, currentProfileId: null,
 
@@ -3064,11 +3071,12 @@ class Component extends DCLogic {
     try {
       const user = await dataService.getCurrentUser();
       if (user) {
+        await dataService.recordLegalAcceptance(user).catch(() => {});
         const isAdminUser = await dataService.isCurrentUserAdmin().catch(() => false);
         this.setState({ view: 'discovery', currentUserId: user.id, currentUserEmail: user.email, isAdminUser });
         const profile = await this.loadMyProfileIntoState(user.id);
         if (!profile) {
-          this.setState({ view: 'onboarding', onboardingStep: 0, obName: (user.user_metadata && user.user_metadata.full_name) || '' });
+          this.setState({ view: 'onboarding', onboardingStep: 0, obName: (user.user_metadata && user.user_metadata.full_name) || '', authDob: (user.user_metadata && user.user_metadata.date_of_birth) || '' });
         } else {
           this.setState({ currentProfileId: profile.id }, () => this.loadDiscovery());
         }
@@ -3114,7 +3122,7 @@ class Component extends DCLogic {
         .map(r => {
           const p = r.profile;
           return {
-            id: p.id, name: p.full_name || 'Member', age: ageFromDob(p.date_of_birth),
+            id: p.id, name: p.full_name || 'Member', age: p.age || 18,
             gender: p.gender || '', city: p.city || '', bio: p.bio || '',
             interests: Array.isArray(p.interests) ? p.interests : [],
             verified: false, hue: hueFromId(p.id), photoUrl: r.photoUrl,
@@ -3175,17 +3183,21 @@ class Component extends DCLogic {
   setAuthEmail(e) { this.setState({ authEmail: e.target.value }); }
   setAuthPassword(e) { this.setState({ authPassword: e.target.value }); }
   setAuthPasswordConfirm(e) { this.setState({ authPasswordConfirm: e.target.value }); }
+  setTermsAccepted(e) { this.setState({ termsAccepted: !!e.target.checked }); }
   async submitAuth() {
     const s = this.state;
     const emailOk = s.authEmail.trim().includes('@');
     if (s.authMode === 'signup') {
       if (!s.authName.trim() || !s.authDob || !s.authEmail.trim() || !s.authPassword) { this.setState({ authError: 'Please fill in all fields to create your account.' }); return; }
       if (!emailOk) { this.setState({ authError: "That email address doesn't look right — double-check it." }); return; }
-      if (s.authPassword.length < 6) { this.setState({ authError: 'Password must be at least 6 characters.' }); return; }
+      if (ageFromDob(s.authDob) < 18) { this.setState({ authError: 'You must be at least 18 years old to join.' }); return; }
+      if (!s.termsAccepted) { this.setState({ authError: 'You must accept the User Agreement and Privacy Notice.' }); return; }
+      if (s.authPassword.length < 12) { this.setState({ authError: 'Use a password with at least 12 characters.' }); return; }
       if (s.authPassword !== s.authPasswordConfirm) { this.setState({ authError: "Passwords don't match — please re-enter them." }); return; }
       try {
         const result = await dataService.signUp(s.authEmail, s.authPassword, s.authName, s.authDob);
         if (result && result.user) {
+          if (result.session) await dataService.recordLegalAcceptance(result.user);
           this.setState({ authError: null, view: 'onboarding', onboardingStep: 0, obName: s.authName, currentUserId: result.user.id, currentUserEmail: result.user.email });
           this.showToast('Account created! Complete your profile.');
         }
@@ -3198,8 +3210,9 @@ class Component extends DCLogic {
       try {
         const result = await dataService.login(s.authEmail, s.authPassword);
         if (result && result.user) {
+          await dataService.recordLegalAcceptance(result.user).catch(() => {});
           const isAdminUser = await dataService.isCurrentUserAdmin().catch(() => false);
-          this.setState({ authError: null, currentUserId: result.user.id, currentUserEmail: result.user.email, isAdminUser });
+          this.setState({ authError: null, currentUserId: result.user.id, currentUserEmail: result.user.email, authDob: (result.user.user_metadata && result.user.user_metadata.date_of_birth) || '', isAdminUser });
           const profile = await this.loadMyProfileIntoState(result.user.id);
           if (!profile) {
             // Signed up before but never finished onboarding — send them there.
@@ -3472,7 +3485,21 @@ class Component extends DCLogic {
   }
 
   // ---------- profile edit ----------
-  saveProfile() { this.showToast('Profile saved'); }
+  async saveProfile() {
+    const s = this.state;
+    if (!s.currentUserId || !s.obName.trim() || !s.obPhotos.some(Boolean)) {
+      this.showToast('Name and at least one photo are required.');
+      return;
+    }
+    try {
+      const profile = await dataService.saveProfile(s.currentUserId, s.currentUserEmail, s.obName, s.authDob, s.obCity, s.obGender, s.obBio, s.obInterests, s.obAgeMin, s.obAgeMax, s.obDistance);
+      await dataService.insertPhotos(profile.id, s.obPhotos.filter(Boolean).map(p => p.path));
+      this.setState({ currentProfileId: profile.id });
+      this.showToast('Profile saved');
+    } catch (err) {
+      this.showToast(err.message || 'Could not save your profile.');
+    }
+  }
 
   // ---------- report / block ----------
   openReportModal(profileId, from) { this.setState({ reportModalTargetId: profileId, reportModalFrom: from || 'discovery', reportSelectedReason: null, reportError: false }); }
@@ -3789,6 +3816,7 @@ class Component extends DCLogic {
       authEmail: s.authEmail, setAuthEmail: (e) => this.setAuthEmail(e),
       authPassword: s.authPassword, setAuthPassword: (e) => this.setAuthPassword(e),
       authPasswordConfirm: s.authPasswordConfirm, setAuthPasswordConfirm: (e) => this.setAuthPasswordConfirm(e),
+      termsAccepted: s.termsAccepted, setTermsAccepted: (e) => this.setTermsAccepted(e),
       submitAuth: () => this.submitAuth(), toggleAuthMode: () => this.toggleAuthMode(), goForgot: () => this.goForgot(),
 
       isForgot: s.view === 'forgot', resetSent: s.resetSent, resetNotSent: !s.resetSent,

@@ -17,6 +17,11 @@ insert into storage.buckets (id, name, public)
 values ('profile-photos', 'profile-photos', false)
 on conflict (id) do update set public = false;
 
+update storage.buckets
+set file_size_limit = 5242880,
+    allowed_mime_types = array['image/jpeg','image/png','image/webp']
+where id = 'profile-photos';
+
 -- 2) Storage RLS policies on storage.objects ----------------------------------
 -- (storage.foldername(name))[1] is the first path segment = the owner's uid.
 
@@ -83,6 +88,7 @@ using (
 create or replace function public.enforce_photo_limit()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if (select count(*) from public.photos where profile_id = new.profile_id) >= 3 then
@@ -92,6 +98,8 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.enforce_photo_limit() from public, anon, authenticated;
 
 drop trigger if exists trg_photos_limit on public.photos;
 create trigger trg_photos_limit

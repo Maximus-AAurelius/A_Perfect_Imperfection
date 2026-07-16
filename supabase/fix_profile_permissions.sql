@@ -1,0 +1,14 @@
+-- ============================================================
+-- OBSOLETE — DO NOT RUN. (Neutralized 2026-07-15)
+--
+-- This file previously contained early versions of save_my_profile and
+-- attach_my_profile_photos WITHOUT the security hardening that now lives at
+-- the end of supabase/schema.sql (18+ enforcement, text length caps, photo
+-- path/count validation, JWT-derived email). Re-running the old contents
+-- would have REPLACED the hardened functions with the weaker ones.
+--
+-- The canonical definitions are in supabase/schema.sql. Nothing to run here.
+-- This file is kept only so old instructions referencing it don't break;
+-- it may be deleted.
+-- ============================================================
+select 'obsolete migration - superseded by schema.sql' as notice;
